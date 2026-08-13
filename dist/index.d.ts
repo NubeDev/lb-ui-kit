@@ -1769,7 +1769,13 @@ export declare interface VizBatchLoaderOptions {
  *  coalescing state is scoped to this dashboard visit.
  *
  *  `call` is optional: absent, the loader binds to the `KitProvider`'s client. A host with a narrower
- *  seam for this subtree (a widget bridge leashed to the two viz verbs) passes it explicitly. */
+ *  seam for this subtree (a widget bridge leashed to the two viz verbs) passes it explicitly.
+ *
+ *  The kit context is read OPTIONALLY on purpose. When `call` is supplied the provider needs nothing
+ *  from the context, and requiring one anyway turns "you gave me a call" into "you must ALSO give me a
+ *  provider" — a coupling the injected seam exists to avoid. It is not hypothetical: the shell's
+ *  `useVizQuery` tests wrap a subtree in this provider and nothing else, and a hard `useKit()` here
+ *  threw in all seven of them. */
 export declare function VizBatchProvider({ call, children }: {
     call?: BatchCall;
     children: ReactNode;

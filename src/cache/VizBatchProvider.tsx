@@ -15,7 +15,7 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 
-import { useKit } from "../provider/KitProvider";
+import { useKitOptional } from "../provider/KitProvider";
 import { makeVizBatchLoader, type BatchCall, type VizBatchLoader } from "./vizBatchLoader";
 
 const VizBatchContext = createContext<VizBatchLoader | null>(null);
@@ -30,12 +30,26 @@ export function useVizBatchLoader(): VizBatchLoader | null {
  *  coalescing state is scoped to this dashboard visit.
  *
  *  `call` is optional: absent, the loader binds to the `KitProvider`'s client. A host with a narrower
- *  seam for this subtree (a widget bridge leashed to the two viz verbs) passes it explicitly. */
+ *  seam for this subtree (a widget bridge leashed to the two viz verbs) passes it explicitly.
+ *
+ *  The kit context is read OPTIONALLY on purpose. When `call` is supplied the provider needs nothing
+ *  from the context, and requiring one anyway turns "you gave me a call" into "you must ALSO give me a
+ *  provider" — a coupling the injected seam exists to avoid. It is not hypothetical: the shell's
+ *  `useVizQuery` tests wrap a subtree in this provider and nothing else, and a hard `useKit()` here
+ *  threw in all seven of them. */
 export function VizBatchProvider({ call, children }: { call?: BatchCall; children: ReactNode }) {
-  const kit = useKit();
-  const loader = useMemo(
-    () => makeVizBatchLoader(call ?? ((tool, args) => kit.client.call(tool, args))),
-    [call, kit.client],
-  );
+  const kit = useKitOptional();
+  const loader = useMemo(() => {
+    if (call) return makeVizBatchLoader(call);
+    if (!kit) {
+      // Neither a call nor a client. Throwing beats defaulting to a no-op transport, which would
+      // render every panel in the subtree empty — indistinguishable from "the query returned nothing".
+      throw new Error(
+        "VizBatchProvider: no `call` prop and no <KitProvider>. Give it one or the other.",
+      );
+    }
+    const client = kit.client;
+    return makeVizBatchLoader((tool, args) => client.call(tool, args));
+  }, [call, kit]);
   return <VizBatchContext.Provider value={loader}>{children}</VizBatchContext.Provider>;
 }

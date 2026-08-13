@@ -1,6 +1,6 @@
 {
   "name": "@nube/dash-kit",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "The Lazybones dashboard machinery \u2014 the read cache, the time-range picker, the source picker, insights, the panel and the nav rail \u2014 published as ONE kit an extension UI can consume. The host injects how to reach the node (a single leashed `(tool, args)` call), so the same code path drives the shell gateway OR an extension bridge.",
   "license": "UNLICENSED",
   "type": "module",
