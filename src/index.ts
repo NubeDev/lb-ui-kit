@@ -70,6 +70,63 @@ export type { RangeBand, RangeColumn, RangePreset } from "./range-picker/rangePr
 export { datePlaceholder, formatDateField, parseDateField } from "./lib/formatDateField";
 export type { DateStyle } from "./lib/formatDateField";
 
+// ── Tier 1b: the read cache ──────────────────────────────────────────────────────────────────────
+export { LIST_STALE_MS, makeDashboardQueryClient } from "./cache/dashboardQueryClient";
+export { DashboardCacheProvider } from "./cache/DashboardQueryProvider";
+export { datasourceListQueryOptions, fetchDatasourceList } from "./cache/datasourceListQuery";
+export type { DatasourceSummary, ListDatasources } from "./cache/datasourceListQuery";
+export { DEFAULT_TTL_S, resolveFreshnessTtl } from "./cache/freshness";
+export type { FreshnessInputs } from "./cache/freshness";
+export {
+  canon,
+  datasourceListKey,
+  flowNodeStateKey,
+  seriesReadKey,
+  sourcePickerKey,
+  vizFetchKey,
+  vizQueryKey,
+  vizShapeKey,
+} from "./cache/queryKeys";
+export type { VizFetchSpec, VizQuerySpec, VizShapeSpec } from "./cache/queryKeys";
+export {
+  persistQuickCache,
+  quickPersister,
+  QUICK_PERSIST_MAX_AGE_MS,
+  QUICK_PERSIST_VERSION,
+} from "./cache/quickPersist";
+export { scopeKey } from "./cache/scopeKey";
+export type { ScopeKeyPart } from "./cache/scopeKey";
+export { WithDashboardCache } from "./cache/testCacheWrapper";
+export {
+  DashboardWsContext,
+  useDashboardWs,
+  useDashboardWsOptional,
+} from "./cache/useDashboardWs";
+export { useDebounced } from "./cache/useDebounced";
+export { FreezeProvider, useFreeze } from "./cache/useFreeze";
+export { FreshnessProvider, useFreshness } from "./cache/useFreshness";
+export { makeVizBatchLoader, MAX_PANELS } from "./cache/vizBatchLoader";
+export type {
+  BatchCall,
+  CacheDirective,
+  VizBatchLoader,
+  VizBatchLoaderOptions,
+  VizQueryResult,
+} from "./cache/vizBatchLoader";
+export { useVizBatchLoader, VizBatchProvider } from "./cache/VizBatchProvider";
+
+// The variable-reference vocabulary the cache's key narrowing runs on. Exported so the shell keeps ONE
+// definition (it re-exports these) rather than a second copy drifting from the one the keys use.
+export {
+  BUILTIN_PREFIX,
+  extractVarNames,
+  extractVarNamesDeep,
+  isBuiltinName,
+  NAV_PATH_SEP,
+  navBuiltins,
+} from "./vars";
+export type { Builtins, NavContext, PageContext, VarScope, VarValue } from "./vars";
+
 // ── The transport vocabulary the injected seams speak ────────────────────────────────────────────
 // Types only for now. The source-picker and insights COMPONENTS land in kit-v0.4.0 (Tier 1c); their
 // type modules ship here first because `makeKitClient` is typed against them.

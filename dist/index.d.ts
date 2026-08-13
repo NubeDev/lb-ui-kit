@@ -1,4 +1,8 @@
+import { Context } from 'react';
 import { JSX as JSX_2 } from 'react';
+import { Persister } from '@tanstack/react-query-persist-client';
+import { Provider } from 'react';
+import { QueryClient } from '@tanstack/react-query';
 import { ReactNode } from 'react';
 
 /** A write action — the tool a switch/slider/button calls on interaction. `argsTemplate` carries a
@@ -7,6 +11,11 @@ export declare interface Action {
     tool: string;
     argsTemplate?: Record<string, unknown>;
 }
+
+/** The transport seam the loader dispatches through — the SAME `{tool, args}` a `WidgetBridge.call`
+ *  takes. Injected so a test can stub the wire (the sanctioned `invoke`-boundary pattern) and so the
+ *  provider can bind a bridge leashed to `viz.query`/`viz.query_batch`. */
+export declare type BatchCall = (tool: string, args: Record<string, unknown>) => Promise<unknown>;
 
 /** The sentinel a stored preference uses for "no stated preference" — treated as absent, not as a
  *  zone name. Empty string means the same thing. */
@@ -17,6 +26,20 @@ export declare const BROWSER_TZ = "browser";
  *  failure mode this exists to avoid. */
 export declare function browserZone(): string;
 
+/** The prefix that marks the BUILT-IN namespace. A `__`-led name resolves from `VarScope.builtins`, so a
+ *  user variable named there is permanently shadowed — which is why `validateVariables` rejects it. */
+export declare const BUILTIN_PREFIX = "__";
+
+/** The shell-resolved built-in globals (`$__from`/`${__user.login}`/`${__workspace}`/…). PURE given
+ *  trusted inputs — the host supplies them from the verified token + the URL time range, NEVER a cell
+ *  or an iframe (un-spoofable). A flat string map keyed by the built-in's bare name (no leading `$__`). */
+export declare type Builtins = Record<string, string>;
+
+/** The freshness directive threaded onto a batch/panel (dashboard-query-acceleration §A). */
+export declare interface CacheDirective {
+    ttl_s: number;
+}
+
 /** Anything with a leashed `call` — an `ExtBridge`, a `PageBridge`, a `WidgetBridge`. Accepted by
  *  {@link makeKitClient} so an extension passes its bridge straight through. */
 export declare interface CallLike {
@@ -25,6 +48,11 @@ export declare interface CallLike {
 
 /** A whole-calendar-period unit (the `this-`/`last-`/`next-` families + the snap suffix). */
 export declare type CalUnit = "second" | "minute" | "hour" | "day" | "week" | "month" | "quarter" | "year";
+
+/** Deterministically canonicalise a value: object keys sorted, `undefined` members dropped, arrays kept in
+ *  order (order is meaningful for targets/paths). The result is stable across unrelated identity churn, so
+ *  two structurally-equal specs hash to the SAME key. */
+export declare function canon(value: unknown): unknown;
 
 /** A registered channel row (the subset of `channel.list` the catalog needs — id only; the registry
  *  record carries more, the package keeps the seam minimal). */
@@ -52,6 +80,13 @@ export declare const DASH_KIT_READ_CAPS: readonly ["mcp:viz.query:call", "mcp:se
  * verb was declined renders a **denied** state naming it, never an empty chart. */
 export declare const DASH_KIT_READ_SCOPE: readonly ["viz.query", "viz.query_batch", "series.read", "series.latest", "series.find"];
 
+/** Provide the per-visit `QueryClient` + the current `ws` to the dashboard subtree. Keyed by the caller
+ *  on `ws` (see `DashboardView`) so a workspace switch remounts with a fresh client and fresh keys. */
+export declare function DashboardCacheProvider({ ws, children }: {
+    ws: string;
+    children: ReactNode;
+}): JSX_2.Element;
+
 export declare function DashboardRangePicker({ from, to, onApply, timezone, compact, dateStyle, onUserApply, }: DashboardRangePickerProps): JSX_2.Element;
 
 export declare interface DashboardRangePickerProps {
@@ -74,6 +109,21 @@ export declare interface DashboardRangePickerProps {
     onUserApply?: () => void;
 }
 
+/** The dashboard workspace context. `null` outside a `DashboardCacheProvider` — a caller that reads it
+ *  without the provider is a wiring bug, so we throw rather than silently key everything under "". */
+export declare const DashboardWsContext: Context<string | null>;
+
+/** `datasource.list` — one entry per ws (the bundle and the Query-tab dropdown read the same key). */
+export declare function datasourceListKey(ws: string): readonly ["datasource.list", string];
+
+/** The query options for `datasource.list` in workspace `ws`. A list-class read (generous stale window):
+ *  it rarely changes mid-visit, so a burst of consumers collapses to one fetch. */
+export declare function datasourceListQueryOptions(ws: string, listDatasources: ListDatasources): {
+    queryKey: readonly ["datasource.list", string];
+    queryFn: () => Promise<DatasourceSummary[]>;
+    staleTime: number;
+};
+
 /** A registered federation datasource (from `datasource.list`). */
 export declare interface DatasourceRow {
     name: string;
@@ -81,6 +131,17 @@ export declare interface DatasourceRow {
     /** Optional endpoint label (mirrors `datasource.list`'s `endpoint`). The catalog row renders it as
      *  a `kind · endpoint` sub-label; absent ⇒ just `kind`. */
     endpoint?: string;
+}
+
+/** A registered federation datasource, as the list read returns it. The kit's own shape: the shell's
+ *  `DatasourceSummary` camel-cases the wire's `secret_ref`, and the ref — never a value, never a DSN —
+ *  is the only credential-adjacent field that ever crosses this boundary. */
+export declare interface DatasourceSummary {
+    name: string;
+    kind: string;
+    endpoint: string;
+    /** The secret store reference (e.g. `federation/timescale`) — the ref, never the value. */
+    secretRef?: string;
 }
 
 /** Human placeholder for the field, e.g. `DD/MM/YYYY`, so an empty field reads correctly per style. */
@@ -93,6 +154,12 @@ export declare type DateStyle = "eu" | "iso" | "usa";
 
 /** The app's default window when a URL carries no (or a broken) range and the board stores none. */
 export declare const DEFAULT_RANGE_EXPR = "last-30-days";
+
+/** The default cache TTL (seconds) applied when a board has neither an auto-refresh cadence nor an
+ *  explicit per-page setting. Caching is ON BY DEFAULT so a fresh board opens fast without any author
+ *  action (dashboard-query-acceleration §C, default-on decision). A board opts OUT to live by setting
+ *  its per-page freshness to exactly `0`. Staleness is bounded by this window (≤120 s). */
+export declare const DEFAULT_TTL_S = 120;
 
 export declare type Endpoint = 
 /** `now`, `now±<n><unit>`, optional `/<unit>` snap (truncate to the start of that unit). */
@@ -161,6 +228,13 @@ export declare interface EvidenceSeries {
     unit?: string;
 }
 
+/** Every distinct variable name referenced in `template` (in first-seen order), built-ins included. */
+export declare function extractVarNames(template: string): string[];
+
+/** Walk a JSON value tree and collect every variable name referenced in any string leaf. The deep
+ *  counterpart of `extractVarNames` over a cell's `source.args` / a JSON payload template. */
+export declare function extractVarNamesDeep(node: unknown): string[];
+
 /** An installed extension row (the subset the picker needs from `ext.list`). */
 export declare interface ExtRow {
     ext: string;
@@ -199,6 +273,10 @@ export declare interface ExtWidgetOption {
     default?: unknown;
 }
 
+/** Fetch (or read warm) the datasource list through the shared cache — used by a source-picker adapter's
+ *  `listDatasources` loader so the bundle and the dropdown share the one call. */
+export declare function fetchDatasourceList(client: QueryClient, ws: string, listDatasources: ListDatasources): Promise<DatasourceSummary[]>;
+
 /** A full flow (from `flows.get`) — only the fields the picker walks. */
 export declare interface Flow {
     id: string;
@@ -212,6 +290,10 @@ export declare interface FlowNode {
     type: string;
 }
 
+/** `flows.node_state` — one entry per (ws, flow, tick). N cells on one flow share it; each slices its own
+ *  node/port/path CLIENT-SIDE from the shared whole-flow read (scope goal 4). */
+export declare function flowNodeStateKey(ws: string, flowId: string, tick: number): readonly ["flows.node_state", string, string, number];
+
 /** A flow's summary (from `flows.list`). */
 export declare interface FlowSummary {
     id: string;
@@ -221,6 +303,19 @@ export declare interface FlowSummary {
 /** ISO `YYYY-MM-DD` → the pref-styled display string. Empty/invalid input returns "" so the caller
  *  can show the placeholder rather than a garbled partial date. */
 export declare function formatDateField(iso: string, style: DateStyle): string;
+
+export declare const FreezeProvider: Provider<boolean>;
+
+/** Inputs to the effective-TTL decision. */
+export declare interface FreshnessInputs {
+    /** The board's auto-refresh cadence in milliseconds (`useAutoRefresh.refreshMs`); `0`/absent ⇒ off. */
+    refreshMs?: number;
+    /** The per-page `cacheTtlS` in seconds (the dashboard record field). A POSITIVE value sets the
+     *  window; an explicit `0` means LIVE (opt out of the default); `undefined` (unset) ⇒ the default. */
+    cacheTtlS?: number;
+}
+
+export declare const FreshnessProvider: Provider<number>;
 
 /** An inbox item summary row (the subset of `inbox.list`'s `Item` the catalog renders). */
 export declare interface InboxRow {
@@ -277,6 +372,9 @@ export declare interface InsightsClient {
     /** Optional live tail — `onEvent` per raise/ack/resolve; returns an unsubscribe. Absent → no feed. */
     subscribe?(onEvent: (event: InsightEvent) => void): () => void;
 }
+
+/** True if a name is a built-in global (`__from`, `__user.login`, …) rather than a user variable. */
+export declare function isBuiltinName(name: string): boolean;
 
 /** True for a rejection the kit itself raised as a deliberate denial. Surfaces use this to pick the
  *  denied state over the error state. */
@@ -388,6 +486,14 @@ export declare type KitTransport = ToolCall | CallLike;
  *  labelling never throws and never lies about what the URL says. */
 export declare function labelOf(from: string, to?: string): string;
 
+/** The generous stale window for list-class reads (source picker bundle, datasource list, flow roster) —
+ *  they rarely change mid-visit, so a burst of consumers collapses to one fetch and re-reads only after
+ *  this window (or an explicit invalidate on workspace switch / editor open where a fresh list matters). */
+export declare const LIST_STALE_MS = 30000;
+
+/** How the host fetches the list. `KitClient.loaders.listDatasources` satisfies this. */
+export declare type ListDatasources = () => Promise<DatasourceSummary[]>;
+
 /** The AND-composed list filter. Mirrors `lb_insights::ListFilter`. */
 export declare interface ListFilter {
     status?: Status;
@@ -408,6 +514,10 @@ export declare interface ListQuery extends ListFilter {
     cursor?: PageCursor;
     limit?: number;
 }
+
+/** Mint the per-visit dashboard client. Called once by the provider (via `useState` initialiser) so the
+ *  client is stable across the visit and a fresh one is created on the next mount. */
+export declare function makeDashboardQueryClient(): QueryClient;
 
 /** The insights seam over one leashed call.
  *
@@ -434,6 +544,41 @@ export declare function makeKitClient(transport: KitTransport, opts?: KitClientO
  *  a verb the caller was not granted rejects, and `loadSourcePicker`/`loadCatalog` treat that as "that
  *  group is empty" — an honest capability-scoped offer, exactly as the shell's adapter does. */
 export declare function makeSourceLoaders(call: ToolCall, opts?: KitClientOptions): SourceLoaders;
+
+/** Build a viz.query batch loader over `call`. Loads are coalesced per `windowMs`, chunked to
+ *  `MAX_PANELS`, and fall back to per-cell `viz.query` when the batch verb is absent. */
+export declare function makeVizBatchLoader(call: BatchCall, opts?: VizBatchLoaderOptions): VizBatchLoader;
+
+/** The lb per-batch panel cap (`viz/batch.rs::MAX_PANELS`). Over-cap the server answers `BadInput`, so
+ *  we chunk to it rather than send an over-cap batch. */
+export declare const MAX_PANELS = 64;
+
+/** The separator for `${__nav.path}`, matching the breadcrumb. Other separators are composed by hand
+ *  from `${__nav.parent.label}` and friends. */
+export declare const NAV_PATH_SEP = " / ";
+
+/** Flatten a nav chain + page record into the `__nav.*` / `__page.*` built-in keys.
+ *
+ *  A depth-1 path yields `__nav.label` and `__nav.path` only — the parent keys are OMITTED, so
+ *  `${__nav.parent.label}` stays literal rather than rendering an empty gap in the middle of a heading.
+ *  An empty/absent chain yields no `__nav.*` key at all. */
+export declare function navBuiltins(nav?: NavContext, page?: PageContext): Builtins;
+
+/** The nav chain the current URL ADDRESSES — derived by the shell from its resolved nav model, never
+ *  from click state (so refresh, bookmark, deep link and shared link all resolve identically). */
+export declare interface NavContext {
+    /** Labels root-first, ending with the item's OWN label. Empty ⇒ no nav context. */
+    path: string[];
+    /** The item's stable key/slug — survives a relabel or a translation. */
+    id?: string;
+    /** The item's pinned heading override (Slice 4 — needs the upstream `NavItem.title_template`). */
+    titleTemplate?: string;
+    /** Did this chain come from a row targeting a DASHBOARD (not a surface)? A board URL lights BOTH the
+     *  ext child that names it and the stock "Dashboards" surface row, and the shell prefers the former
+     *  when choosing which chain to publish (`nav-context.ts`). Carried on the chain only to make that
+     *  choice; it renders nothing and produces no `__nav.*` key. */
+    dashboardTargeted?: boolean;
+}
 
 /** A node descriptor (from `flows.nodes`) — the port lists the picker offers as bindings. */
 export declare interface NodeDescriptor {
@@ -474,6 +619,17 @@ export declare interface Origin {
 
 export declare type OriginKind = "rule" | "flow" | "agent" | "ext" | "manual";
 
+/** The page-record inputs behind `${__page.*}`. */
+export declare interface PageContext {
+    /** The dashboard id — `${__page.id}`, an alias of the shipped `${__dashboard}`. */
+    id?: string;
+    /** The record's un-overridden `title` — `${__page.title}`. */
+    title?: string;
+    /** The `managedBy` extension id. `undefined` on a hand-authored board, which still yields an EMPTY
+     *  `${__page.ext}` (see the header) as long as a page context exists at all. */
+    ext?: string;
+}
+
 /** Keyset cursor — opaque to the caller; the verb parses it. */
 export declare interface PageCursor {
     ts: number;
@@ -498,6 +654,17 @@ export declare type ParseOutcome = {
 
 /** Parse one expression — a window token or an endpoint. Never throws. */
 export declare function parseRangeExpr(raw: string): ParseOutcome;
+
+/** Wire persistence onto a dashboard `QueryClient` for one workspace visit.
+ *
+ *  Restore is ASYNCHRONOUS and deliberately NON-BLOCKING: the dashboard renders immediately and the
+ *  restored entries land a few milliseconds later — long before the user can open the Quick dialog,
+ *  and a race merely costs the old behaviour (a live probe), never a wrong answer. Gating the whole
+ *  dashboard subtree on an IndexedDB read to save a dialog that is not yet open would be the worse
+ *  trade.
+ *
+ *  Returns the unsubscribe — call it on unmount so a dropped client stops writing. */
+export declare function persistQuickCache(client: QueryClient, ws: string): () => void;
 
 /** An insight summary row (the subset of `insight.list`'s `items[]` the catalog renders). Severity
  *  + status are optional so a host that only has `id`/`title` still renders. */
@@ -541,6 +708,22 @@ export declare interface QuerySummary {
     name: string;
     target?: string;
 }
+
+/** How long a persisted entry may be restored before it is discarded outright. This is the OUTER
+ *  bound, not the freshness contract: `staleTime` governs revalidation, and everything restored is
+ *  refetched in the background anyway. A week keeps "open the same board next Monday" instant. */
+export declare const QUICK_PERSIST_MAX_AGE_MS: number;
+
+/** The CACHE BUSTER. Bump on ANY change to the shape a `quick-*` query resolves to — `ColumnStats`,
+ *  `RelatedField`, the probe record, the table-shape map. react-query rehydrates blindly, so a shape
+ *  change without a bump would feed yesterday's structure to today's `detectMetricShape` and produce
+ *  a confidently wrong (or crashing) detection. A mismatched buster discards the whole store. */
+export declare const QUICK_PERSIST_VERSION = "v1";
+
+/** An IndexedDB `Persister` over `idb-keyval`. Deliberately hand-rolled rather than pulling in the
+ *  async-storage-persister package: the whole contract is three methods, and IndexedDB (not
+ *  localStorage) is the right store for a probe payload that can carry hundreds of distinct values. */
+export declare function quickPersister(ws: string): Persister;
 
 export declare const RANGE_BANDS: RangeBand[];
 
@@ -603,6 +786,11 @@ export declare interface ResolvedRange {
     toMs: number;
 }
 
+/** Resolve the single effective cache TTL in SECONDS. Returns `0` only when the board explicitly opts
+ *  out to live (per-page `cacheTtlS === 0`); an unset board gets {@link DEFAULT_TTL_S}. A negative/NaN
+ *  per-page value is treated as unset (defensive — a corrupt record falls back to the default). */
+export declare function resolveFreshnessTtl({ refreshMs, cacheTtlS, }: FreshnessInputs): number;
+
 /** Resolve a `from`/`to` pair against a clock + timezone. `null` = malformed (a bad token, a window
  *  token alongside a `to`, or an inverted pair) — the caller degrades to its default window. */
 export declare function resolveRange(from: string | undefined, to: string | undefined, nowMs: number, tz: string): ResolvedRange | null;
@@ -646,6 +834,19 @@ export declare interface SchemaTable {
     columns: SchemaColumn[];
 }
 
+/** Narrow `scope` for `spec`'s cache key: `values` pass through, `builtins` keeps only the names `spec`
+ *  actually references (and is omitted entirely when it references none). A non-object scope (or one
+ *  without `builtins`) is returned unchanged — callers outside the `VarScope` contract are not rewritten. */
+export declare function scopeKey(spec: unknown, scope: unknown): unknown;
+
+/** The key-facing projection of a scope: the values verbatim, plus ONLY the referenced built-ins.
+ *  `builtins` is ABSENT (not empty) when the spec references none, so a board of plain-SQL panels keys
+ *  exactly as it did before any built-in existed. */
+export declare interface ScopeKeyPart {
+    values: unknown;
+    builtins?: Builtins;
+}
+
 /** A section's load state — never a fake "ready with empty data" when the read was denied. This is
  *  the contract the EXPLORER skin surfaces visibly (loading skeleton / "Not permitted." / ready) and
  *  the COMBOBOX collapses into an empty group via projection. Moved in from the rules panel's
@@ -665,6 +866,10 @@ export declare type SectionState<T> = {
     status: "denied";
     error: string;
 };
+
+/** `series.read` backfill — one entry per (ws, series). N cells on one series share one read (scope goal 4).
+ *  The live SSE tail stays OUTSIDE the cache (state vs motion) — this keys only the history backfill. */
+export declare function seriesReadKey(ws: string, series: string): readonly ["series.read", string, string];
 
 export declare type Severity = "info" | "warning" | "critical";
 
@@ -718,6 +923,9 @@ export declare interface SourceLoaders {
     listInbox?: () => Promise<InboxRow[]>;
 }
 
+/** The source-picker bundle — one entry per ws, shared by the page-level and editor instances (goal 3). */
+export declare function sourcePickerKey(ws: string): readonly ["source-picker", string];
+
 /** What selecting a picker entry yields — the host maps this onto whatever it persists (a dashboard
  *  cell, a scene bind, a variable query, …). Exactly one of `source`/`action`/`viewKey` is set. */
 export declare interface SourceSelection {
@@ -746,6 +954,26 @@ export declare type ToolCall = (tool: string, args?: Record<string, unknown>) =>
  *  `ToolCall` deliberately resolves `unknown` so no decode is assumed at the seam. */
 export declare function toolCallOf(transport: KitTransport): ToolCall;
 
+/** The current dashboard workspace. Throws if read outside `DashboardCacheProvider` (a wiring bug — a
+ *  read hook must never fall back to an unscoped key that would bleed across workspaces). */
+export declare function useDashboardWs(): string;
+
+/** The current dashboard workspace, or `null` outside a `DashboardCacheProvider`. For a consumer that
+ *  is ALSO valid without the cache (an ext widget may mount standalone — a v2 self-fetching tile needs
+ *  no frames): it reads the ws when present and does no cache read when absent. A DATA tile only reaches
+ *  its `viz.query` when a provider supplies the ws, so this never keys under an unscoped ws. */
+export declare function useDashboardWsOptional(): string | null;
+
+/** Return `value` delayed by `ms` of quiet — the returned value only updates once `value` has been stable
+ *  for `ms`. The FIRST value passes through on mount (nothing to wait for); each change restarts the timer. */
+export declare function useDebounced<T>(value: T, ms: number): T;
+
+/** Read the ambient freeze flag. An explicit `useVizQuery({frozen})` opt takes precedence over this. */
+export declare function useFreeze(): boolean;
+
+/** Read the ambient effective cache TTL (seconds). `0` ⇒ live (omit the directive). */
+export declare function useFreshness(): number;
+
 /** The kit context. Throws outside a `KitProvider` — a kit surface with no client has no honest
  *  behaviour available: it cannot read, and rendering empty would be indistinguishable from "no data". */
 export declare function useKit(): KitContextValue;
@@ -766,6 +994,107 @@ export declare function useKitWs(): string;
 /** The zone resolver — the injected replacement for the shell's `preferredZone()`. */
 export declare function useKitZone(): ZoneResolver;
 
+/** Read the ambient batch loader, or `null` outside a provider (an editor / a lone panel) — the caller
+ *  then uses the single `viz.query` path. */
+export declare function useVizBatchLoader(): VizBatchLoader | null;
+
+/** The fully-resolved scope an interpolation substitutes against: the user-variable selections (by
+ *  name) + the built-ins. This is the contract handed to a widget as `ctx.vars`. */
+export declare interface VarScope {
+    /** The resolved user-variable selections, keyed by variable name. */
+    values: Record<string, VarValue>;
+    /** The host-resolved built-ins (token + time range derived). */
+    builtins: Builtins;
+}
+
+/** A resolved variable VALUE — a single value, or a multi-value list (multi/include-all selections). */
+export declare type VarValue = string | string[];
+
+/** A batch loader instance. `load` is the per-cell entry; `supported` exposes the feature-detect state
+ *  (for a status hint / test assertion). */
+export declare interface VizBatchLoader {
+    load(panel: unknown, cache?: CacheDirective): Promise<VizQueryResult>;
+    readonly supported: boolean;
+}
+
+export declare interface VizBatchLoaderOptions {
+    /** The coalescing window in ms — loads arriving within it join one batch. Small (a render's worth).
+     *  Injectable so a test can flush deterministically. Default 12 ms. */
+    windowMs?: number;
+    /** The verb id for the batch call (defaults to the lb verb). */
+    batchTool?: string;
+    /** The verb id for the single/fallback call. */
+    singleTool?: string;
+}
+
+/** Mount a per-visit batch loader for the subtree. One loader per mount so its feature-detect +
+ *  coalescing state is scoped to this dashboard visit.
+ *
+ *  `call` is optional: absent, the loader binds to the `KitProvider`'s client. A host with a narrower
+ *  seam for this subtree (a widget bridge leashed to the two viz verbs) passes it explicitly. */
+export declare function VizBatchProvider({ call, children }: {
+    call?: BatchCall;
+    children: ReactNode;
+}): JSX_2.Element;
+
+export declare function vizFetchKey(ws: string, spec: VizFetchSpec): readonly ["viz.fetch", string, unknown];
+
+/** The FETCH half of the split (data-studio-ux: edit-without-requery). Keyed on ONLY what a datasource
+ *  read depends on — `sources`/`source`/`scope`/`tick`. Crucially, `transformations` and `fieldConfig`
+ *  are ABSENT, so a transform/field-config edit does NOT re-key this → the raw frames stay cached and no
+ *  datasource is re-hit. A source/SQL/time-range edit (or Run, via `tick`) DOES re-key → a fresh fetch. */
+export declare interface VizFetchSpec {
+    sources: unknown;
+    source: unknown;
+    scope: unknown;
+    tick: number;
+}
+
+/** `viz.query` — keyed on the canonical resolved spec + scope + tick, ws-prefixed. The scope goes
+ *  through `scopeKey` first: only the built-ins the spec REFERENCES ride the key (nav-context-vars
+ *  Slice 1b), so `__nav.*`/`__page.*` — and the per-tick `$__from`/`$__to` — never re-key a panel whose
+ *  own strings never mention them. */
+export declare function vizQueryKey(ws: string, spec: VizQuerySpec): readonly ["viz.query", string, unknown];
+
+/** The `{frames, rows}` shape a single `viz.query` returns — what `load()` resolves to. */
+export declare interface VizQueryResult {
+    frames?: unknown[];
+    rows?: Array<Record<string, unknown>>;
+}
+
+/** The resolved viz.query spec that actually drives the fetch — NOT the whole panel. Title/layout/option
+ *  edits are absent here, so they don't re-key (scope goal 2). `tick` folds the refresh cadence into the
+ *  key so a new tick is a new entry ("fresh until next tick"). */
+export declare interface VizQuerySpec {
+    sources: unknown;
+    transformations: unknown;
+    fieldConfig: unknown;
+    source: unknown;
+    scope: unknown;
+    tick: number;
+}
+
+export declare function vizShapeKey(ws: string, spec: VizShapeSpec): readonly ["viz.shape", string, unknown];
+
+/** The SHAPE half of the split. Keyed on the RAW frames (by a cheap hash) + `transformations` — the
+ *  ONLY thing the server reshapes. A transform edit re-keys this → one compute-only `viz.query` over
+ *  the already-fetched raw frames, no datasource touch. No transformations at all → the caller skips
+ *  the round-trip entirely and uses the raw frames as-is.
+ *
+ *  `fieldConfig` is deliberately ABSENT (it was in this key until 2026-08-01). It is PRESENTATION —
+ *  unit, decimals, min/max, color, thresholds, mappings — applied client-side at render by
+ *  `fieldconfig/resolve.ts` + `format.ts`, which every view already calls. The server never reads it:
+ *  lb's frames-in path is `transform(frames, &pipeline)` and `panel_pipeline` parses ONLY
+ *  `panel.transformations` (`host/src/viz/query.rs`). So keying on it bought nothing and cost a full
+ *  HTTP round-trip per keystroke that returned byte-identical frames — and, because the view rendered
+ *  the SETTLED shape response, made a unit change look like it did nothing until that no-op call
+ *  landed. Do not re-add it: if a field-config key ever needs server compute, it belongs in
+ *  `transformations`. */
+export declare interface VizShapeSpec {
+    framesHash: string;
+    transformations: unknown;
+}
+
 declare type Window_2 = 
 /** `yesterday` (-1) / `today` (0) / `tomorrow` (+1): that whole calendar day. */
     {
@@ -785,6 +1114,13 @@ declare type Window_2 =
     unit: StepUnit;
 };
 export { Window_2 as Window }
+
+/** Wrap `children` in the dashboard read cache for a test render. Pass the test's workspace so cache keys
+ *  match production; the provider mints a per-mount client so each test starts cold. */
+export declare function WithDashboardCache({ ws, children }: {
+    ws: string;
+    children: ReactNode;
+}): JSX_2.Element;
 
 /** How the kit resolves "the viewer's time zone" when nothing more specific is set. Replaces the
  *  shell-only `preferredZone()` import that used to be `lib/timerange`'s single outside coupling —

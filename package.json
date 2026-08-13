@@ -1,6 +1,6 @@
 {
   "name": "@nube/dash-kit",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "The Lazybones dashboard machinery \u2014 the read cache, the time-range picker, the source picker, insights, the panel and the nav rail \u2014 published as ONE kit an extension UI can consume. The host injects how to reach the node (a single leashed `(tool, args)` call), so the same code path drives the shell gateway OR an extension bridge.",
   "license": "UNLICENSED",
   "type": "module",
@@ -36,7 +36,9 @@
     "@tanstack/query-core": "^5.101.4",
     "lucide-react": ">=0.4.0",
     "react": ">=18",
-    "react-dom": ">=18"
+    "react-dom": ">=18",
+    "@tanstack/react-query": "^5.101.2",
+    "@tanstack/react-query-persist-client": "^5.101.4"
   },
   "peerDependenciesMeta": {
     "@tanstack/query-core": {
@@ -62,11 +64,15 @@
     "typescript": "~5.6.3",
     "vite": "^5.0.0",
     "vite-plugin-dts": "^4.0.0",
-    "vitest": "^2.0.0"
+    "vitest": "^2.0.0",
+    "@tanstack/react-query": "^5.101.2",
+    "@tanstack/react-query-persist-client": "^5.101.4",
+    "idb-keyval": "^6.3.0"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "tailwind-merge": "^3.6.0"
+    "tailwind-merge": "^3.6.0",
+    "idb-keyval": "^6.3.0"
   }
 }

@@ -133,9 +133,9 @@ without a consumer lockfile regen is silently green locally and red everywhere e
 |---|---|
 | `kit-v0.1.0` | Tier 0 — `KitProvider`, `makeKitClient`, `DASH_KIT_READ_SCOPE`, the transport vocabulary |
 | `kit-v0.2.0` | Tier 1a — `lib/timerange` (the lb-pinned grammar + its conformance fixture), `DashboardRangePicker`, `rangePresets`, `PrefDateInput` |
+| `kit-v0.3.0` | Tier 1b — **the read cache**: batch fan-in, ws-scoped keys, scope narrowing, the per-visit client, the IndexedDB mirror |
 
-Tiers 1b (the read cache) and 1c (source-picker / insights / panel / nav-rail) follow as `kit-v0.3.0`
-and `kit-v0.4.0`. Tier 2 (genui, the viz/chart kit) is deliberately out until a real consumer defines
+Tier 1c (source-picker / insights / panel / nav-rail) follows as `kit-v0.4.0`. Tier 2 (genui, the viz/chart kit) is deliberately out until a real consumer defines
 its edge.
 
 ### Scoping a kit component
