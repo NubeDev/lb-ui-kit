@@ -33,6 +33,43 @@ export type {
   ZoneResolver,
 } from "./provider/KitProvider";
 
+// ── Tier 1a: the time-range grammar + the date select ────────────────────────────────────────────
+export {
+  DEFAULT_RANGE_EXPR,
+  isoDayOf,
+  isWindowExpr,
+  labelOf,
+  normalizeTz,
+  parseRangeExpr,
+  previewBound,
+  rangeTimezone,
+  resolveRange,
+  shortLabelOf,
+} from "./timerange";
+export type {
+  CalUnit,
+  Endpoint,
+  ParseOutcome,
+  RangeExpr,
+  ResolvedRange,
+  StepUnit,
+  Window,
+} from "./timerange";
+export { BROWSER_TZ, preferredZone } from "./timerange/zone";
+
+export { DashboardRangePicker } from "./range-picker/DashboardRangePicker";
+export type { DashboardRangePickerProps } from "./range-picker/DashboardRangePicker";
+export { PrefDateInput } from "./range-picker/PrefDateInput";
+export type { PrefDateInputProps } from "./range-picker/PrefDateInput";
+export {
+  RANGE_BANDS,
+  RANGE_COLUMNS,
+  RANGE_PRESETS,
+} from "./range-picker/rangePresets";
+export type { RangeBand, RangeColumn, RangePreset } from "./range-picker/rangePresets";
+export { datePlaceholder, formatDateField, parseDateField } from "./lib/formatDateField";
+export type { DateStyle } from "./lib/formatDateField";
+
 // ── The transport vocabulary the injected seams speak ────────────────────────────────────────────
 // Types only for now. The source-picker and insights COMPONENTS land in kit-v0.4.0 (Tier 1c); their
 // type modules ship here first because `makeKitClient` is typed against them.

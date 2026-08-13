@@ -41,6 +41,19 @@ for (const m of text.matchAll(/(:root|:host)[^{]*\{([^}]*)\}/g)) {
   }
 }
 
+// Every rule that targets a CLASS must be scoped under `.dash-kit`. This is the CSS-leak proof itself,
+// not a proxy for it: an unscoped `.p-4 { padding: 1rem }` in a kit stylesheet matches HOST elements,
+// which is exactly how a kit repaints an app it does not own. The one legitimate global is Tailwind v4's
+// `*,:before,:after,::backdrop { --tw-*: … }` property-registration block — it declares only inert
+// `--tw-` defaults that nothing reads outside a (scoped) utility.
+const SCOPE = ".dash-kit";
+for (const m of text.matchAll(/([^{}@]+)\{/g)) {
+  const sel = m[1].trim();
+  if (!/\.[A-Za-z]/.test(sel)) continue; // no class in this selector — element/at-rule/keyframe
+  if (sel.includes(SCOPE)) continue;
+  problems.push(`unscoped class rule (would match HOST elements): ${sel.slice(0, 120)}`);
+}
+
 if (problems.length) {
   console.error("assert-no-theme-block: the kit stylesheet leaks into the host:");
   for (const p of problems) console.error(`  • ${p}`);

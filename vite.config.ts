@@ -31,6 +31,11 @@ export default defineConfig({
         "react/jsx-runtime",
         "react-dom/client",
         "@tanstack/query-core",
+        // Externalised for the same reason React is: an extension resolves these through the shell's
+        // import map, and two copies of a Radix primitive mean two portal/context identities.
+        "@radix-ui/react-dropdown-menu",
+        "@radix-ui/react-slot",
+        "lucide-react",
       ],
       output: {
         assetFileNames: "dash-kit.[ext]",

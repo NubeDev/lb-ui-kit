@@ -132,10 +132,18 @@ without a consumer lockfile regen is silently green locally and red everywhere e
 | Tag | Ships |
 |---|---|
 | `kit-v0.1.0` | Tier 0 — `KitProvider`, `makeKitClient`, `DASH_KIT_READ_SCOPE`, the transport vocabulary |
+| `kit-v0.2.0` | Tier 1a — `lib/timerange` (the lb-pinned grammar + its conformance fixture), `DashboardRangePicker`, `rangePresets`, `PrefDateInput` |
 
-Tiers 1a (timerange + range picker), 1b (the read cache) and 1c (source-picker / insights / panel /
-nav-rail) follow as `kit-v0.2.0` … `kit-v0.4.0`. Tier 2 (genui, the viz/chart kit) is deliberately out
-until a real consumer defines its edge.
+Tiers 1b (the read cache) and 1c (source-picker / insights / panel / nav-rail) follow as `kit-v0.3.0`
+and `kit-v0.4.0`. Tier 2 (genui, the viz/chart kit) is deliberately out until a real consumer defines
+its edge.
+
+### Scoping a kit component
+
+Utilities are compiled **nested under `.dash-kit`**, so every kit component puts that class on its own
+root — including Radix **portal** content, which renders at the document root outside its trigger's
+subtree and would otherwise be entirely unstyled. `assert-no-theme-block.mjs` fails the build if any
+compiled rule targeting a class escapes that scope.
 
 ## Licence
 

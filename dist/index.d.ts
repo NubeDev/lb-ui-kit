@@ -8,6 +8,10 @@ export declare interface Action {
     argsTemplate?: Record<string, unknown>;
 }
 
+/** The sentinel a stored preference uses for "no stated preference" — treated as absent, not as a
+ *  zone name. Empty string means the same thing. */
+export declare const BROWSER_TZ = "browser";
+
 /** The browser's zone, or `UTC` when the platform will not say. The default {@link ZoneResolver}.
  *  Never guesses UTC when a real zone is available — a chart silently drawn in the wrong zone is the
  *  failure mode this exists to avoid. */
@@ -18,6 +22,9 @@ export declare function browserZone(): string;
 export declare interface CallLike {
     call: <T = unknown>(tool: string, args?: Record<string, unknown>) => Promise<T>;
 }
+
+/** A whole-calendar-period unit (the `this-`/`last-`/`next-` families + the snap suffix). */
+export declare type CalUnit = "second" | "minute" | "hour" | "day" | "week" | "month" | "quarter" | "year";
 
 /** A registered channel row (the subset of `channel.list` the catalog needs — id only; the registry
  *  record carries more, the package keeps the seam minimal). */
@@ -45,6 +52,28 @@ export declare const DASH_KIT_READ_CAPS: readonly ["mcp:viz.query:call", "mcp:se
  * verb was declined renders a **denied** state naming it, never an empty chart. */
 export declare const DASH_KIT_READ_SCOPE: readonly ["viz.query", "viz.query_batch", "series.read", "series.latest", "series.find"];
 
+export declare function DashboardRangePicker({ from, to, onApply, timezone, compact, dateStyle, onUserApply, }: DashboardRangePickerProps): JSX_2.Element;
+
+export declare interface DashboardRangePickerProps {
+    /** The committed range EXPRESSION pair (the URL contract; `to` absent for a window token). */
+    from: string;
+    to?: string;
+    onApply: (range: {
+        from: string;
+        to?: string;
+    }) => void;
+    /** The range-anchor timezone (`rangeTimezone(...)`) the preview resolves in. Absent ⇒ the viewer's LOCAL zone. */
+    timezone?: string;
+    /** Phone width (mobile-friendly-ui §4.2): trigger shows the short label; popover clamps. */
+    compact?: boolean;
+    /** The viewer's resolved `date_style`, threaded to the absolute-tab date fields. Absent ⇒ `eu`. */
+    dateStyle?: DateStyle;
+    /** Fired just before `onApply` when the user commits a window. The shell passes `markUserRefresh`
+     *  so its panels show the refreshing indicator while the re-query lands; that is dashboard-refresh
+     *  telemetry, not picker logic, so it is injected rather than shipped. Absent ⇒ nothing extra. */
+    onUserApply?: () => void;
+}
+
 /** A registered federation datasource (from `datasource.list`). */
 export declare interface DatasourceRow {
     name: string;
@@ -53,6 +82,52 @@ export declare interface DatasourceRow {
      *  a `kind · endpoint` sub-label; absent ⇒ just `kind`. */
     endpoint?: string;
 }
+
+/** Human placeholder for the field, e.g. `DD/MM/YYYY`, so an empty field reads correctly per style. */
+export declare function datePlaceholder(style: DateStyle): string;
+
+/** The viewer's resolved date-field style. Vendored as a 3-value union rather than imported from the
+ *  shell's prefs types: it is the whole of what this module needs, and pulling `prefs.types` in would
+ *  drag the shell's preference subsystem into a pure formatter. */
+export declare type DateStyle = "eu" | "iso" | "usa";
+
+/** The app's default window when a URL carries no (or a broken) range and the board stores none. */
+export declare const DEFAULT_RANGE_EXPR = "last-30-days";
+
+export declare type Endpoint = 
+/** `now`, `now±<n><unit>`, optional `/<unit>` snap (truncate to the start of that unit). */
+    {
+    kind: "now";
+    offset?: {
+        sign: 1 | -1;
+        n: number;
+        unit: StepUnit;
+    };
+    snap?: CalUnit;
+}
+/** An ISO `yyyy-mm-dd` day — midnight in the range timezone (today's contract, unchanged). */
+| {
+    kind: "isoDay";
+    y: number;
+    mo: number;
+    d: number;
+}
+/** A zoned ISO instant or 13-digit epoch ms — an absolute instant, timezone-independent. */
+| {
+    kind: "instant";
+    ms: number;
+}
+/** A zone-less ISO instant — interpreted as a wall time in the range timezone. */
+| {
+    kind: "wall";
+    y: number;
+    mo: number;
+    d: number;
+    h: number;
+    mi: number;
+    s: number;
+    ms: number;
+};
 
 /** The data that proves a finding — the producer's own binding. Mirrors `lb_insights::Evidence`
  *  (`docs/scope/insights/insight-evidence-scope.md`).
@@ -143,6 +218,10 @@ export declare interface FlowSummary {
     name: string;
 }
 
+/** ISO `YYYY-MM-DD` → the pref-styled display string. Empty/invalid input returns "" so the caller
+ *  can show the placeholder rather than a garbled partial date. */
+export declare function formatDateField(iso: string, style: DateStyle): string;
+
 /** An inbox item summary row (the subset of `inbox.list`'s `Item` the catalog renders). */
 export declare interface InboxRow {
     id: string;
@@ -203,10 +282,17 @@ export declare interface InsightsClient {
  *  denied state over the error state. */
 export declare function isKitDenied(e: unknown): e is KitDeniedError;
 
+/** The ISO `yyyy-mm-dd` day an instant falls in, in `tz` — what previews and URL projections print. */
+export declare function isoDayOf(ms: number, tz: string): string;
+
 /** True for the SHELL bridge's local out-of-scope rejection (`out_of_scope: <tool>`), which is what a
  *  missing `[ui] scope` entry produces — the `viz.query_batch` trap in `scope.ts`. A kit surface must
  *  render this as **denied**, never as empty and never as a retryable error. */
 export declare function isOutOfScope(e: unknown): boolean;
+
+/** True when the expression is a whole-window token (`today`, `this-month`, `last-3-months`, …) —
+ *  the forms that forbid a `to`. */
+export declare function isWindowExpr(raw: string): boolean;
 
 /** The assembled client a {@link KitProvider} takes. `call` is the raw seam the read cache dispatches
  *  through; `loaders` and `insights` are the typed bags the picker and the insights surfaces take.
@@ -297,6 +383,11 @@ export declare interface KitTheme {
  *  `(tool, args) => invoke("mcp_call", { tool, args })`). */
 export declare type KitTransport = ToolCall | CallLike;
 
+/** The label of a committed range: a window token names itself; an endpoint pair reads as the literal
+ *  expressions ("2026-07-27 → 2026-08-03", "now-4h → now"). An unparseable value prints verbatim —
+ *  labelling never throws and never lies about what the URL says. */
+export declare function labelOf(from: string, to?: string): string;
+
 /** The AND-composed list filter. Mirrors `lb_insights::ListFilter`. */
 export declare interface ListFilter {
     status?: Status;
@@ -351,6 +442,10 @@ export declare interface NodeDescriptor {
     outputs?: string[];
 }
 
+/** A usable IANA timezone name: the input when Intl accepts it, else `"UTC"` (an unknown zone
+ *  DEGRADES, never throws — the shell contract for anything a URL or record can carry). */
+export declare function normalizeTz(tz: string | undefined): string;
+
 /** The occurrence-ring cursor. Mirrors `lb_insights::OccCursor`. */
 export declare interface OccCursor {
     seq: number;
@@ -389,6 +484,21 @@ export declare interface PageCursor {
  *  node's `ParamKind`). Absent → `"text"`. */
 export declare type ParamKind = "text" | "number" | "date" | "enum";
 
+/** Pref-styled display string → ISO `YYYY-MM-DD`, or "" if it doesn't parse. The inverse of
+ *  `formatDateField`; used when the user edits the visible text directly. */
+export declare function parseDateField(text: string, style: DateStyle): string;
+
+export declare type ParseOutcome = {
+    ok: true;
+    expr: RangeExpr;
+} | {
+    ok: false;
+    error: string;
+};
+
+/** Parse one expression — a window token or an endpoint. Never throws. */
+export declare function parseRangeExpr(raw: string): ParseOutcome;
+
 /** An insight summary row (the subset of `insight.list`'s `items[]` the catalog renders). Severity
  *  + status are optional so a host that only has `id`/`title` still renders. */
 export declare interface PickerInsightRow {
@@ -397,6 +507,29 @@ export declare interface PickerInsightRow {
     severity?: string;
     status?: string;
 }
+
+export declare function PrefDateInput({ value, onChange, dateStyle, className, ...rest }: PrefDateInputProps): JSX_2.Element;
+
+export declare interface PrefDateInputProps {
+    value: string;
+    onChange: (iso: string) => void;
+    /** The viewer's resolved `date_style`. INJECTED rather than read from a prefs hook: resolving it
+     *  needs the shell's session store and two network calls, which would drag the whole preference
+     *  subsystem into the kit for one three-value enum. The host already knows the answer — it passes it.
+     *  Absent ⇒ the product default (`eu`), the same builtin lb folds to, so the un-injected field order
+     *  never disagrees with the resolved one. */
+    dateStyle?: DateStyle;
+    className?: string;
+    "aria-label"?: string;
+}
+
+/** The first candidate that states a real zone, else whatever `zone()` says. `"browser"`/empty are
+ *  "no stated preference" and fall through — they are not zone names. */
+export declare function preferredZone(zone: ZoneResolver_2, ...candidates: (string | undefined | null)[]): string;
+
+/** The preview projection of a resolved bound: the ISO day when it falls on a midnight in `tz`, else
+ *  the day plus wall time — what the picker's live preview prints. */
+export declare function previewBound(ms: number, tz: string): string;
 
 /** A saved query's summary (the subset of `query.list`'s `queries[]` the picker renders) — a saved
  *  query is a read source (`query.run {id}` → `{columns, rows}`), so it mirrors `RuleSummary`.
@@ -408,6 +541,71 @@ export declare interface QuerySummary {
     name: string;
     target?: string;
 }
+
+export declare const RANGE_BANDS: RangeBand[];
+
+/** The unit columns, left to right. One heading per column, shared by both bands. */
+export declare const RANGE_COLUMNS: readonly ["Minutes", "Hours", "Days", "Months", "Years"];
+
+/** Every preset, flat — the roster callers outside the picker (and the tests) read. Grid order:
+ *  band by band, column by column, so the reading order matches what the popover paints. */
+export declare const RANGE_PRESETS: RangePreset[];
+
+/** A band = one row of the grid: trailing (ends now) or calendar (a whole period). */
+export declare interface RangeBand {
+    id: "trailing" | "calendar";
+    /** The band heading. */
+    label: string;
+    /** The distinction the heading is carrying — rendered small, under the label. */
+    hint: string;
+    /** Column heading → the presets in that cell, top to bottom. A cell may be EMPTY. */
+    cells: Record<RangeColumn, RangePreset[]>;
+}
+
+export declare type RangeColumn = (typeof RANGE_COLUMNS)[number];
+
+export declare type RangeExpr = {
+    type: "endpoint";
+    endpoint: Endpoint;
+} | {
+    type: "window";
+    window: Window_2;
+};
+
+export declare interface RangePreset {
+    /** Stable id (the shipped ids where one existed — callers/tests key on these). */
+    id: string;
+    /** The label the user reads — `labelOf(expr)`, precomputed so the popover renders a plain list. */
+    label: string;
+    /** The range expression the picker COMMITS to the URL (`?from=<expr>`). */
+    expr: string;
+}
+
+/** The timezone a window ANCHORS in (scope decision 3): the board's `Dashboard.timezone` if set,
+ *  else the viewer's prefs timezone, else THE VIEWER'S LOCAL ZONE. (`"browser"`/empty = "no stated
+ *  preference".) Distinct from `resolveTimezone` (display formatting, where prefs win) — this decides
+ *  which calendar day "today" IS.
+ *
+ *  The fallback is `preferredZone`'s, i.e. local — NOT UTC (fixed 2026-08-07). This function decides
+ *  where `today`/`this-week` TRUNCATE, so a UTC fallback did not merely mislabel: for a UTC+7 viewer
+ *  with no stated pref, `today` opened at 07:00 local and `yesterday` was a 7-hour-shifted day. The
+ *  lb conformance fixture passes `tz` explicitly at every row and never exercises this resolver, so
+ *  the pinned grammar is untouched by the change.
+ *
+ *  `zone` is the injected resolver (the `KitProvider` `zone` prop) — the extraction's replacement for
+ *  the shell-only `preferredZone()` import that used to be this module's single outside coupling. Its
+ *  default is the browser zone, which is byte-identical to the shell's previous behaviour. */
+export declare function rangeTimezone(dashboardTz?: string, prefsTz?: string, zone?: ZoneResolver_2): string;
+
+/** A resolved window: epoch ms, `toMs` exclusive. What `$__from`/`$__to` carry. */
+export declare interface ResolvedRange {
+    fromMs: number;
+    toMs: number;
+}
+
+/** Resolve a `from`/`to` pair against a clock + timezone. `null` = malformed (a bad token, a window
+ *  token alongside a `to`, or an inverted pair) — the caller degrades to its default window. */
+export declare function resolveRange(from: string | undefined, to: string | undefined, nowMs: number, tz: string): ResolvedRange | null;
 
 /** A rule's declared parameter (mirrors the node's `RuleParam`) — a name, an optional human label, and
  *  its type. A host renders one input per param around the picker and fills the rule's `args.params`.
@@ -470,6 +668,11 @@ export declare type SectionState<T> = {
 
 export declare type Severity = "info" | "warning" | "critical";
 
+/** The phone-width label (mobile-friendly-ui §4.2): a token label is already short; an ISO-day pair
+ *  compresses to a year-less `Jul 27 – Aug 3` (the full pair is ~200px and clips at 390px). Parsed at
+ *  UTC so the printed day never drifts across the viewer's zone — presentation only. */
+export declare function shortLabelOf(from: string, to?: string): string;
+
 /** A read source — ANY granted MCP tool call (re-checked at the host per call). */
 export declare interface Source {
     tool: string;
@@ -530,6 +733,9 @@ export declare interface SourceSelection {
 
 export declare type Status = "open" | "acked" | "resolved";
 
+/** A step unit for offset arithmetic. `m` = minute, `M` = month (Grafana-compatible). */
+export declare type StepUnit = "s" | "m" | "h" | "d" | "w" | "M" | "q" | "y";
+
 /** The leashed tool call — the SAME `(tool, args)` an `ExtBridge.call` / `PageBridge.call` /
  *  `WidgetBridge.call` takes, and the same shape `vizBatchLoader`'s `BatchCall` dispatches through.
  *  Returns `unknown`: the caller owns the decode, because the kit must never assume a wire shape it
@@ -560,9 +766,32 @@ export declare function useKitWs(): string;
 /** The zone resolver — the injected replacement for the shell's `preferredZone()`. */
 export declare function useKitZone(): ZoneResolver;
 
+declare type Window_2 = 
+/** `yesterday` (-1) / `today` (0) / `tomorrow` (+1): that whole calendar day. */
+    {
+    kind: "day";
+    offset: -1 | 0 | 1;
+}
+/** `this-` (current) / `last-` (previous) / `next-` whole calendar period. */
+| {
+    kind: "period";
+    rel: "this" | "last" | "next";
+    unit: CalUnit;
+}
+/** `last-<n>-<unit>s` / `last-<n><unit>`: a trailing window ending now. `last-1-month` ≠ `last-month`. */
+| {
+    kind: "trailing";
+    n: number;
+    unit: StepUnit;
+};
+export { Window_2 as Window }
+
 /** How the kit resolves "the viewer's time zone" when nothing more specific is set. Replaces the
  *  shell-only `preferredZone()` import that used to be `lib/timerange`'s single outside coupling —
  *  a prop rather than an SDK change, so no `ui-v*` tag is involved. Default: the browser zone. */
 export declare type ZoneResolver = () => string;
+
+/** How the kit resolves "the viewer's zone". Mirrors `KitProvider`'s `zone` prop. */
+declare type ZoneResolver_2 = () => string;
 
 export { }

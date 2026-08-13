@@ -10,15 +10,19 @@
  *      would restyle the host chrome. Only `tailwindcss/theme.css` is imported, and utilities are
  *      generated NESTED under `.dash-kit` so every compiled class is `.dash-kit .p-4 { … }` — confined
  *      to the kit's own subtree, never matching a host element.
- *   3. Every token below is an ALIAS of a host shadcn var with a standalone fallback. Inside a host
+ *   3. Every colour below is an ALIAS of a host shadcn var with a standalone fallback. Inside a host
  *      that defines `--bg`/`--panel`/…, the kit inherits the host's theme through the cascade and a
- *      light/dark toggle just works. Outside one (a story, a bare test page) the fallback keeps it
- *      legible. The kit never DEFINES `--bg`; it only reads it.
+ *      light/dark toggle just works — the kit never re-declares those vars, it only READS them. Outside
+ *      one (a story, a bare test page) the fallback keeps it legible.
  *   4. A canvas/JS surface cannot read a CSS var, so it reads `ctx.theme` through `useKitTheme()` and
  *      recolors on change. That is the ONLY themed path that is not this file.
  *
  * The same discipline `@nube/panel` / `@nube/nav-rail` / `@nube/source-picker` already ship; the kit
  * inherits it rather than inventing a second one.
+ *
+ * SCOPING IS OPT-IN AT THE ROOT. Because utilities live under `.dash-kit`, every kit component puts
+ * that class on its own root — including any Radix PORTAL content, which renders at the document root
+ * outside its trigger's subtree and would otherwise be entirely unstyled.
  */
 
 @layer theme, utilities;
@@ -32,22 +36,41 @@
   }
 }
 
-/* The kit's token surface — aliases of the host's, never definitions of the host's. */
-.dash-kit {
-  --dk-bg: hsl(var(--bg, 222 14% 11%));
-  --dk-panel: hsl(var(--panel, 232 15% 9%));
-  --dk-fg: hsl(var(--fg, 210 20% 96%));
-  --dk-muted: hsl(var(--muted, 220 9% 60%));
-  --dk-border: hsl(var(--border, 220 10% 24%));
-  --dk-accent: hsl(var(--accent, 217 91% 60%));
-  --dk-radius: var(--radius, 0.5rem);
+/* The kit's colour surface. Named to MATCH the host shell's token names so the moved components keep
+ * their class strings verbatim (`bg-panel`, `text-fg`, `border-border`, …) — the extraction changes
+ * where the code lives, never how it looks. Each is `hsl(var(--host-token, <fallback>))`: inside the
+ * shell (or any host defining these) it resolves to the host's live value and follows a theme toggle;
+ * standalone it falls back to the shipped dark palette. */
+@theme {
+  --color-bg: hsl(var(--bg, 222 14% 11%));
+  --color-panel: hsl(var(--panel, 232 15% 9%));
+  --color-panel-2: hsl(var(--panel-2, 232 15% 13%));
+  --color-fg: hsl(var(--fg, 210 20% 96%));
+  --color-muted: hsl(var(--muted, 220 9% 60%));
+  --color-muted-bg: hsl(var(--muted-bg, 220 10% 18%));
+  --color-muted-foreground: hsl(var(--muted-foreground, 220 9% 60%));
+  --color-border: hsl(var(--border, 220 10% 24%));
+  --color-input: hsl(var(--input, 220 10% 24%));
+  --color-ring: hsl(var(--ring, 217 91% 60%));
+  --color-accent: hsl(var(--accent, 217 91% 60%));
+  --color-accent-2: hsl(var(--accent-2, 262 83% 66%));
+  --color-accent-foreground: hsl(var(--accent-foreground, 210 20% 98%));
+  --color-popover: hsl(var(--popover, 232 15% 9%));
+  --color-popover-foreground: hsl(var(--popover-foreground, 210 20% 96%));
+  --color-destructive: hsl(var(--destructive, 0 72% 51%));
+  --color-success: hsl(var(--success, 142 71% 45%));
+  --color-warning: hsl(var(--warning, 38 92% 50%));
+
+  /* `danger` is DEFINED here, unlike in the shell. The moved components carry `text-danger` on their
+   * parse-error and invalid-range copy, but the shell has no `--color-danger` — so that class compiles
+   * to nothing there and the error text silently renders in the inherited colour. Carrying a dead
+   * class into a fresh package would be shipping a known no-op, so the kit points it at the same
+   * semantic the class always meant. (The shell's own dead `text-danger` uses are a separate,
+   * repo-wide cosmetic issue and are not this extraction's to fix.) */
+  --color-danger: hsl(var(--destructive, 0 72% 51%));
 }
 
-@theme {
-  --color-dk-bg: var(--dk-bg);
-  --color-dk-panel: var(--dk-panel);
-  --color-dk-fg: var(--dk-fg);
-  --color-dk-muted: var(--dk-muted);
-  --color-dk-border: var(--dk-border);
-  --color-dk-accent: var(--dk-accent);
+/* Radius: the host's if it states one, else the shadcn default the primitives were written against. */
+.dash-kit {
+  --radius: var(--radius, 0.5rem);
 }
