@@ -7,10 +7,19 @@
 //   - `to` is EXCLUSIVE. A window token (`today`, `this-month`, …) is legal only in `from` with `to`
 //     absent — a window + a `to` is malformed (`null` here; the host refuses loudly).
 //   - An endpoint `from` with no `to` ends at `now`.
+//   - The current-period tokens (`today`, `this-<unit>`) run from the START of the period to `now` —
+//     "so far this period" — while `yesterday`/`tomorrow` and `last-<unit>`/`next-<unit>` are whole
+//     periods.
 //   - Month/quarter/year (and day/week) arithmetic is CALENDAR-AWARE in `tz`: `last-1-month` on
 //     31 March is 28 February; day steps preserve the wall clock across a DST change. Second/minute/
 //     hour steps are exact durations (the moment.js rule the Grafana grammar inherits).
-//   - Weeks start Monday; quarters are Jan/Apr/Jul/Oct.
+//   - Weeks start Monday BY DEFAULT; a caller may pass `weekStart` (`"monday"` | `"sunday"`, the
+//     `first_day_of_week` pref) to re-anchor the week windows (`this-week`, `now/w`, …) at the other
+//     start. Quarters are Jan/Apr/Jul/Oct.
+//
+//   - The default is Monday so the vendored conformance fixture (pinned to lb's Rust twin, which floors
+//     weeks to Monday) stays green unchanged — the param is a client-side extension, not a grammar
+//     change.
 
 import {
   civilFromDays,
@@ -20,8 +29,9 @@ import {
   msFromWall,
   normalizeTz,
   wallOf,
-  weekdayMon0,
+  weekdayOf,
   type Wall,
+  type WeekStart,
 } from "./civil";
 import { browserZone, preferredZone, type ZoneResolver } from "./zone";
 import { parseRangeExpr, type CalUnit, type Endpoint, type StepUnit, type Window } from "./parse";
@@ -92,7 +102,8 @@ export function addUnits(ms: number, n: number, unit: StepUnit, tz: string): num
   }
 }
 
-/** One whole calendar period as a step (`this-week` → +1w, `last-quarter` → -1q, …). */
+/** One whole calendar period as a step — the `last-<unit>` / `next-<unit>` arithmetic (`last-week`
+ *  → -1w, `next-quarter` → +1q). The `this-<unit>` tokens never step: they end at now. */
 function stepOf(unit: CalUnit): StepUnit {
   const map: Record<CalUnit, StepUnit> = {
     second: "s",
@@ -107,11 +118,12 @@ function stepOf(unit: CalUnit): StepUnit {
   return map[unit];
 }
 
-/** Truncate an instant to the start of its calendar `unit` in `tz` (Monday weeks, Jan/Apr/Jul/Oct
- *  quarters). */
-export function startOfUnit(ms: number, unit: CalUnit, tz: string): number {
+/** Truncate an instant to the start of its calendar `unit` in `tz` (weeks start at `weekStart`, the
+ *  `first_day_of_week` pref, defaulting to Monday; quarters are Jan/Apr/Jul/Oct). */
+export function startOfUnit(ms: number, unit: CalUnit, tz: string, weekStart?: WeekStart): number {
   if (unit === "second") return Math.floor(ms / 1000) * 1000;
   const w = wallOf(ms, tz);
+  const ws = weekStart ?? "monday";
   switch (unit) {
     case "minute":
       return msFromWall({ ...w, s: 0 }, tz);
@@ -120,7 +132,7 @@ export function startOfUnit(ms: number, unit: CalUnit, tz: string): number {
     case "day":
       return msFromWall({ ...w, h: 0, mi: 0, s: 0 }, tz);
     case "week": {
-      const civil = civilFromDays(daysFromCivil(w.y, w.mo, w.d) - weekdayMon0(w.y, w.mo, w.d));
+      const civil = civilFromDays(daysFromCivil(w.y, w.mo, w.d) - weekdayOf(w.y, w.mo, w.d, ws));
       return msFromWall({ ...w, ...civil, h: 0, mi: 0, s: 0 }, tz);
     }
     case "month":
@@ -137,12 +149,12 @@ export function startOfUnit(ms: number, unit: CalUnit, tz: string): number {
 // --- endpoint / window resolution --------------------------------------------------------------
 
 /** Resolve one endpoint expression to an instant. */
-export function resolveEndpoint(ep: Endpoint, nowMs: number, tz: string): number {
+export function resolveEndpoint(ep: Endpoint, nowMs: number, tz: string, weekStart?: WeekStart): number {
   switch (ep.kind) {
     case "now": {
       let ms = nowMs;
       if (ep.offset) ms = addUnits(ms, ep.offset.sign * ep.offset.n, ep.offset.unit, tz);
-      if (ep.snap) ms = startOfUnit(ms, ep.snap, tz);
+      if (ep.snap) ms = startOfUnit(ms, ep.snap, tz, weekStart);
       return ms;
     }
     case "isoDay":
@@ -154,17 +166,20 @@ export function resolveEndpoint(ep: Endpoint, nowMs: number, tz: string): number
   }
 }
 
-/** Resolve one window token to its whole range (`to` exclusive). */
-export function resolveWindow(win: Window, nowMs: number, tz: string): ResolvedRange {
+/** Resolve one window token to its range (`to` exclusive). The current-period tokens (`today`,
+ *  `this-<unit>`) run from the START of the period to NOW — "so far this period"; `yesterday` /
+ *  `tomorrow` and `last-<unit>` / `next-<unit>` are whole periods. */
+export function resolveWindow(win: Window, nowMs: number, tz: string, weekStart?: WeekStart): ResolvedRange {
   switch (win.kind) {
     case "day": {
       const start = addUnits(startOfUnit(nowMs, "day", tz), win.offset, "d", tz);
+      if (win.offset === 0) return { fromMs: start, toMs: nowMs }; // `today`: midnight → now
       return { fromMs: start, toMs: addUnits(start, 1, "d", tz) };
     }
     case "period": {
-      const cur = startOfUnit(nowMs, win.unit, tz);
+      const cur = startOfUnit(nowMs, win.unit, tz, weekStart);
       const step = stepOf(win.unit);
-      if (win.rel === "this") return { fromMs: cur, toMs: addUnits(cur, 1, step, tz) };
+      if (win.rel === "this") return { fromMs: cur, toMs: nowMs };
       if (win.rel === "last") return { fromMs: addUnits(cur, -1, step, tz), toMs: cur };
       const next = addUnits(cur, 1, step, tz);
       return { fromMs: next, toMs: addUnits(cur, 2, step, tz) };
@@ -176,12 +191,17 @@ export function resolveWindow(win: Window, nowMs: number, tz: string): ResolvedR
 }
 
 /** Resolve a `from`/`to` pair against a clock + timezone. `null` = malformed (a bad token, a window
- *  token alongside a `to`, or an inverted pair) — the caller degrades to its default window. */
+ *  token alongside a `to`, or an inverted pair) — the caller degrades to its default window.
+ *
+ *  `weekStart` re-anchors the week windows (`this-week`, `last-week`, `now/w`, …) at the
+ *  `first_day_of_week` pref's start; absent (or `"monday"`) keeps the pinned Monday grammar the
+ *  conformance fixture asserts. */
 export function resolveRange(
   from: string | undefined,
   to: string | undefined,
   nowMs: number,
   tz: string,
+  weekStart?: WeekStart,
 ): ResolvedRange | null {
   if (!from || !from.trim()) return null;
   const zone = normalizeTz(tz);
@@ -191,15 +211,15 @@ export function resolveRange(
   if (f.expr.type === "window") {
     // A range token with a `to` present is malformed (scope decision 2).
     if (to && to.trim()) return null;
-    return resolveWindow(f.expr.window, nowMs, zone);
+    return resolveWindow(f.expr.window, nowMs, zone, weekStart);
   }
 
-  const fromMs = resolveEndpoint(f.expr.endpoint, nowMs, zone);
+  const fromMs = resolveEndpoint(f.expr.endpoint, nowMs, zone, weekStart);
   let toMs = nowMs;
   if (to && to.trim()) {
     const t = parseRangeExpr(to);
     if (!t.ok || t.expr.type !== "endpoint") return null; // a window token is never legal in `to`
-    toMs = resolveEndpoint(t.expr.endpoint, nowMs, zone);
+    toMs = resolveEndpoint(t.expr.endpoint, nowMs, zone, weekStart);
   }
   return fromMs <= toMs ? { fromMs, toMs } : null;
 }

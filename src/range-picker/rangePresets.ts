@@ -6,9 +6,11 @@
 // `labelOf` reads the label straight off the expression rather than reverse-resolving a date pair.
 //
 // The grid's axes are the two things a reader actually has to tell apart:
-//   - BAND (row) — TRAILING windows end at *now*; CALENDAR windows are a whole clock/calendar period.
-//     `Last 60 minutes` and `Last hour` are NOT the same window, and they sit one band apart in the
-//     same column so the headings do that explaining instead of a tooltip.
+//   - BAND (row) — TRAILING windows are a counted duration back from *now*; CALENDAR windows align
+//     to calendar boundaries — the WHOLE period for `last-`/`next-` (`Last hour`), the ELAPSED part
+//     (period start → now) for `today`/`this-*`. `Last 60 minutes` and `Last hour` are NOT the same
+//     window, and they sit one band apart in the same column so the headings do that explaining
+//     instead of a tooltip.
 //   - COLUMN — the unit the window is counted in (minutes → years), so a longer window is always
 //     further right and adding one later is dropping a row into a cell.
 //
@@ -30,7 +32,8 @@ export interface RangePreset {
 export const RANGE_COLUMNS = ["Minutes", "Hours", "Days", "Months", "Years"] as const;
 export type RangeColumn = (typeof RANGE_COLUMNS)[number];
 
-/** A band = one row of the grid: trailing (ends now) or calendar (a whole period). */
+/** A band = one row of the grid: trailing (a counted duration back from now) or calendar
+ *  (aligned to calendar boundaries — the whole period for last/next, period start → now for this). */
 export interface RangeBand {
   id: "trailing" | "calendar";
   /** The band heading. */
@@ -84,7 +87,7 @@ export const RANGE_BANDS: RangeBand[] = [
   {
     id: "calendar",
     label: "Calendar",
-    hint: "whole period",
+    hint: "calendar-aligned",
     cells: {
       // No "this minute" — nobody reaches for it, and an empty cell is information, not a gap.
       Minutes: [],

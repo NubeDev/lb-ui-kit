@@ -136,6 +136,7 @@ without a consumer lockfile regen is silently green locally and red everywhere e
 | `kit-v0.3.0` | Tier 1b — **the read cache**: batch fan-in, ws-scoped keys, scope narrowing, the per-visit client, the IndexedDB mirror |
 | `kit-v0.4.0` | Tier 1c — the substrate: `source-picker`, `insights`, `panel`, `nav-rail` (moved verbatim; `ui/packages/*` deleted) |
 | `kit-v0.4.1` | Fix: `VizBatchProvider` no longer requires a `KitProvider` when a `call` is injected |
+| `kit-v0.5.0` | Picks up rubix-ai#127: configurable week start (`weekStart` prop), current-period windows resolve start-of-period → now, updated lb conformance fixture |
 
 Tier 2 (genui, the viz/chart kit) is deliberately out until a real consumer defines
 its edge.

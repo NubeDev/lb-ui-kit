@@ -2,6 +2,7 @@
 // `timerange/` resolver, pinned to it by `conformance.json`. Re-exports only.
 
 export { isoDayOf, normalizeTz } from "./civil";
+export type { WeekStart } from "./civil";
 export { isWindowExpr, parseRangeExpr } from "./parse";
 export type { CalUnit, Endpoint, ParseOutcome, RangeExpr, StepUnit, Window } from "./parse";
 export {
@@ -11,4 +12,5 @@ export {
   resolveRange,
   type ResolvedRange,
 } from "./resolve";
+export { weekStartOf } from "./weekStart";
 export { labelOf, shortLabelOf } from "./label";

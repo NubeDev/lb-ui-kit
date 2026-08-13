@@ -62,9 +62,11 @@ export type Endpoint =
   | { kind: "wall"; y: number; mo: number; d: number; h: number; mi: number; s: number; ms: number };
 
 export type Window =
-  /** `yesterday` (-1) / `today` (0) / `tomorrow` (+1): that whole calendar day. */
+  /** `yesterday` (-1) / `today` (0) / `tomorrow` (+1): a calendar day. `today` runs midnight → now
+   *  ("so far today"); `yesterday`/`tomorrow` are that whole day. */
   | { kind: "day"; offset: -1 | 0 | 1 }
-  /** `this-` (current) / `last-` (previous) / `next-` whole calendar period. */
+  /** `this-` (start of the current period → now) / `last-` (previous) / `next-` (next) — last and
+   *  next span the whole calendar period, this spans only its elapsed part. */
   | { kind: "period"; rel: "this" | "last" | "next"; unit: CalUnit }
   /** `last-<n>-<unit>s` / `last-<n><unit>`: a trailing window ending now. `last-1-month` ≠ `last-month`. */
   | { kind: "trailing"; n: number; unit: StepUnit };

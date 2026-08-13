@@ -3,9 +3,10 @@
 // `conformance.test.ts`) came across byte-identical and prove the BEHAVIOUR is unchanged; this file
 // proves the SEAMS that replaced the app imports actually work, which no moved test can.
 //
-//   `preferredZone()`   → the `KitProvider` `zone` prop  (was `@/lib/datetime/localZone`)
-//   `useResolvedPrefs()` → the `dateStyle` prop          (was `@/lib/prefs/useResolvedPrefs`)
-//   `markUserRefresh()`  → the `onUserApply` prop        (was `./refreshIntent`)
+//   `preferredZone()`    → the `KitProvider` `zone` prop  (was `@/lib/datetime/localZone`)
+//   `useResolvedPrefs()` → the `dateStyle` prop           (was `@/lib/prefs/useResolvedPrefs`)
+//   `useResolvedPrefs()` → the `weekStart` prop           (ditto — `first_day_of_week`)
+//   `markUserRefresh()`  → the `onUserApply` prop         (was `./refreshIntent`)
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
@@ -13,7 +14,7 @@ import userEvent from "@testing-library/user-event";
 
 import { makeKitClient } from "../client/makeKitClient";
 import { KitProvider } from "../provider/KitProvider";
-import { rangeTimezone } from "../timerange";
+import { rangeTimezone, resolveRange, weekStartOf } from "../timerange";
 import { DashboardRangePicker } from "./DashboardRangePicker";
 import { PrefDateInput } from "./PrefDateInput";
 
@@ -56,6 +57,38 @@ describe("zone injection (was preferredZone)", () => {
     expect(() =>
       render(<DashboardRangePicker from="last-30-days" onApply={() => {}} />),
     ).not.toThrow();
+  });
+});
+
+describe("weekStart injection (was useResolvedPrefs)", () => {
+  // `first_day_of_week` arrived on `main` (rubix-ai#127) WHILE this code was being extracted, so the
+  // kit's first copy predated it. It is the same class of coupling as `dateStyle` — resolving the pref
+  // needs the host's session store — and so takes the same treatment: a prop, not a hook.
+  it("weekStartOf folds an absent or unknown value to Monday, never junk", () => {
+    // The resolver must never see a value outside the closed set: a not-yet-seeded locale, or a typo,
+    // must degrade to the grammar the lb conformance fixture pins — never a silently shifted window.
+    expect(weekStartOf(undefined)).toBe("monday");
+    expect(weekStartOf("nonsense")).toBe("monday");
+    expect(weekStartOf("sunday")).toBe("sunday");
+    expect(weekStartOf("monday")).toBe("monday");
+  });
+
+  it("actually re-anchors `this-week` — the two settings resolve to different windows", () => {
+    // Wednesday 2026-07-29T12:00Z. Monday-start → the week opens on the 27th; Sunday-start → the 26th.
+    const now = Date.parse("2026-07-29T12:00:00Z");
+    const mon = resolveRange("this-week", undefined, now, "UTC", "monday");
+    const sun = resolveRange("this-week", undefined, now, "UTC", "sunday");
+    expect(mon).not.toBeNull();
+    expect(sun).not.toBeNull();
+    expect(sun!.fromMs).toBeLessThan(mon!.fromMs);
+    expect(mon!.fromMs - sun!.fromMs).toBe(24 * 60 * 60 * 1000);
+  });
+
+  it("defaults to Monday when the host injects nothing", () => {
+    const now = Date.parse("2026-07-29T12:00:00Z");
+    expect(resolveRange("this-week", undefined, now, "UTC")).toEqual(
+      resolveRange("this-week", undefined, now, "UTC", "monday"),
+    );
   });
 });
 

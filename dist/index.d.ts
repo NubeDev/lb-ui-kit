@@ -253,7 +253,7 @@ export declare function DashboardCacheProvider({ ws, children }: {
     children: ReactNode;
 }): JSX_2.Element;
 
-export declare function DashboardRangePicker({ from, to, onApply, timezone, compact, dateStyle, onUserApply, }: DashboardRangePickerProps): JSX_2.Element;
+export declare function DashboardRangePicker({ from, to, onApply, timezone, compact, dateStyle, weekStart: weekStartProp, onUserApply, }: DashboardRangePickerProps): JSX_2.Element;
 
 export declare interface DashboardRangePickerProps {
     /** The committed range EXPRESSION pair (the URL contract; `to` absent for a window token). */
@@ -269,6 +269,10 @@ export declare interface DashboardRangePickerProps {
     compact?: boolean;
     /** The viewer's resolved `date_style`, threaded to the absolute-tab date fields. Absent ⇒ `eu`. */
     dateStyle?: DateStyle;
+    /** The viewer's resolved `first_day_of_week`. INJECTED for the same reason `dateStyle` is: resolving
+     *  it needs the host's session store and two network calls. Absent ⇒ Monday, the grammar the lb
+     *  conformance fixture pins — so an un-injected picker is never silently on a different calendar. */
+    weekStart?: WeekStart;
     /** Fired just before `onApply` when the user commits a window. The shell passes `markUserRefresh`
      *  so its panels show the refreshing indicator while the re-query lands; that is dashboard-refresh
      *  telemetry, not picker logic, so it is injected rather than shipped. Absent ⇒ nothing extra. */
@@ -1198,7 +1202,8 @@ export declare const RANGE_COLUMNS: readonly ["Minutes", "Hours", "Days", "Month
  *  band by band, column by column, so the reading order matches what the popover paints. */
 export declare const RANGE_PRESETS: RangePreset[];
 
-/** A band = one row of the grid: trailing (ends now) or calendar (a whole period). */
+/** A band = one row of the grid: trailing (a counted duration back from now) or calendar
+ *  (aligned to calendar boundaries — the whole period for last/next, period start → now for this). */
 export declare interface RangeBand {
     id: "trailing" | "calendar";
     /** The band heading. */
@@ -1284,8 +1289,12 @@ export declare interface ResolvedRange {
 export declare function resolveFreshnessTtl({ refreshMs, cacheTtlS, }: FreshnessInputs): number;
 
 /** Resolve a `from`/`to` pair against a clock + timezone. `null` = malformed (a bad token, a window
- *  token alongside a `to`, or an inverted pair) — the caller degrades to its default window. */
-export declare function resolveRange(from: string | undefined, to: string | undefined, nowMs: number, tz: string): ResolvedRange | null;
+ *  token alongside a `to`, or an inverted pair) — the caller degrades to its default window.
+ *
+ *  `weekStart` re-anchors the week windows (`this-week`, `last-week`, `now/w`, …) at the
+ *  `first_day_of_week` pref's start; absent (or `"monday"`) keeps the pinned Monday grammar the
+ *  conformance fixture asserts. */
+export declare function resolveRange(from: string | undefined, to: string | undefined, nowMs: number, tz: string, weekStart?: WeekStart): ResolvedRange | null;
 
 /** A rule's declared parameter (mirrors the node's `RuleParam`) — a name, an optional human label, and
  *  its type. A host renders one input per param around the picker and fills the rule's `args.params`.
@@ -1839,6 +1848,14 @@ export declare interface VizShapeSpec {
     transformations: unknown;
 }
 
+/** The weekday a calendar/week starts on — the closed set `first_day_of_week` may carry (the
+ *  resolver's default week-start convention is Monday; a viewer's pref may override it to Sunday). */
+export declare type WeekStart = "monday" | "sunday";
+
+/** Map the resolved `first_day_of_week` axis to a `WeekStart`. Absent (unset → inherit) or any value
+ *  outside the closed `monday`/`sunday` set means Monday — the grammar the conformance fixture pins. */
+export declare function weekStartOf(v: string | undefined): WeekStart;
+
 /** Derive a widget id from a tile — the label slug, lowercased, non-alnum → `-`. The renderer parses
  *  the same slug from the `ext:<id>/<widget>` key, so picker and renderer agree (one slug function).
  *  Exported so a host renderer can reuse it instead of forking a second slugger. */
@@ -1847,12 +1864,14 @@ export declare function widgetIdOf(w: {
 }): string;
 
 declare type Window_2 = 
-/** `yesterday` (-1) / `today` (0) / `tomorrow` (+1): that whole calendar day. */
+/** `yesterday` (-1) / `today` (0) / `tomorrow` (+1): a calendar day. `today` runs midnight → now
+*  ("so far today"); `yesterday`/`tomorrow` are that whole day. */
     {
     kind: "day";
     offset: -1 | 0 | 1;
 }
-/** `this-` (current) / `last-` (previous) / `next-` whole calendar period. */
+/** `this-` (start of the current period → now) / `last-` (previous) / `next-` (next) — last and
+*  next span the whole calendar period, this spans only its elapsed part. */
 | {
     kind: "period";
     rel: "this" | "last" | "next";

@@ -45,6 +45,7 @@ export {
   rangeTimezone,
   resolveRange,
   shortLabelOf,
+  weekStartOf,
 } from "./timerange";
 export type {
   CalUnit,
@@ -53,6 +54,7 @@ export type {
   RangeExpr,
   ResolvedRange,
   StepUnit,
+  WeekStart,
   Window,
 } from "./timerange";
 export { BROWSER_TZ, preferredZone } from "./timerange/zone";

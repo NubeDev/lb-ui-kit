@@ -54,10 +54,16 @@ export function daysInMonth(y: number, mo: number): number {
   return daysFromCivil(next.y, next.mo, 1) - daysFromCivil(y, mo, 1);
 }
 
-/** Monday-start weekday index (Mon=0 … Sun=6) of a civil date. 1970-01-01 was a Thursday. */
-export function weekdayMon0(y: number, mo: number, d: number): number {
+/** The weekday a calendar/week starts on — the closed set `first_day_of_week` may carry (the
+ *  resolver's default week-start convention is Monday; a viewer's pref may override it to Sunday). */
+export type WeekStart = "monday" | "sunday";
+
+/** Weekday index (0 = the week's first day … 6) of a civil date, for the given `start`. 1970-01-01
+ *  was a Thursday. The epoch offsets: Monday-start counts Thu at 3 (Mon0…Sun6); Sunday-start counts
+ *  Thu at 4 (Sun0…Sat6). */
+export function weekdayOf(y: number, mo: number, d: number, start: WeekStart): number {
   const z = daysFromCivil(y, mo, d);
-  return ((z % 7) + 3 + 7) % 7;
+  return ((z % 7) + (start === "sunday" ? 4 : 3) + 7) % 7;
 }
 
 // --- timezone bridge (Intl) --------------------------------------------------------------------

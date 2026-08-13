@@ -70,10 +70,10 @@ describe("resolveRange — endpoints", () => {
 });
 
 describe("resolveRange — window tokens", () => {
-  it("today / yesterday / tomorrow are whole days, `to` exclusive", () => {
+  it("today runs midnight → NOW; yesterday/tomorrow are whole days, `to` exclusive", () => {
     expect(resolveRange("today", undefined, NOW, UTC)).toEqual({
       fromMs: utc("2026-08-05T00:00:00.000Z"),
-      toMs: utc("2026-08-06T00:00:00.000Z"),
+      toMs: NOW,
     });
     expect(resolveRange("yesterday", undefined, NOW, UTC)).toEqual({
       fromMs: utc("2026-08-04T00:00:00.000Z"),
@@ -85,10 +85,10 @@ describe("resolveRange — window tokens", () => {
     });
   });
 
-  it("this-week starts Monday; last-week is the previous Monday-start week", () => {
+  it("this-week starts Monday and ends NOW; last-week is the previous Monday-start week", () => {
     expect(resolveRange("this-week", undefined, NOW, UTC)).toEqual({
       fromMs: utc("2026-08-03T00:00:00.000Z"),
-      toMs: utc("2026-08-10T00:00:00.000Z"),
+      toMs: NOW,
     });
     expect(resolveRange("last-week", undefined, NOW, UTC)).toEqual({
       fromMs: utc("2026-07-27T00:00:00.000Z"),
@@ -96,18 +96,18 @@ describe("resolveRange — window tokens", () => {
     });
   });
 
-  it("this-month / this-quarter (Jan/Apr/Jul/Oct) / this-year are whole calendar periods", () => {
+  it("this-month / this-quarter (Jan/Apr/Jul/Oct) / this-year run from period start to NOW", () => {
     expect(resolveRange("this-month", undefined, NOW, UTC)).toEqual({
       fromMs: utc("2026-08-01T00:00:00.000Z"),
-      toMs: utc("2026-09-01T00:00:00.000Z"),
+      toMs: NOW,
     });
     expect(resolveRange("this-quarter", undefined, NOW, UTC)).toEqual({
       fromMs: utc("2026-07-01T00:00:00.000Z"),
-      toMs: utc("2026-10-01T00:00:00.000Z"),
+      toMs: NOW,
     });
     expect(resolveRange("this-year", undefined, NOW, UTC)).toEqual({
       fromMs: utc("2026-01-01T00:00:00.000Z"),
-      toMs: utc("2027-01-01T00:00:00.000Z"),
+      toMs: NOW,
     });
   });
 
@@ -150,14 +150,14 @@ describe("resolveRange — window tokens", () => {
     );
   });
 
-  it("leap day: last-1-year on 29 Feb 2028 clamps to 28 Feb 2027; this-month spans the leap Feb", () => {
+  it("leap day: last-1-year on 29 Feb 2028 clamps to 28 Feb 2027; this-month spans the leap Feb to now", () => {
     const leap = utc("2028-02-29T12:00:00.000Z");
     expect(resolveRange("last-1-year", undefined, leap, UTC)?.fromMs).toBe(
       utc("2027-02-28T12:00:00.000Z"),
     );
     expect(resolveRange("this-month", undefined, leap, UTC)).toEqual({
       fromMs: utc("2028-02-01T00:00:00.000Z"),
-      toMs: utc("2028-03-01T00:00:00.000Z"),
+      toMs: leap,
     });
   });
 
@@ -177,15 +177,15 @@ describe("resolveRange — window tokens", () => {
 describe("resolveRange — DST (Australia/Sydney; AEST +10 / AEDT +11)", () => {
   const SYD = "Australia/Sydney";
 
-  it("`today` across the spring-forward day (2026-10-04) is a 23-hour window", () => {
-    // Noon AEDT on the transition day (DST started 02:00 that morning).
+  it("`today` on the spring-forward day (2026-10-04) runs midnight → now (the honest elapsed time)", () => {
+    // 11:00 AEDT on the transition day (DST started 02:00 that morning).
     const now = utc("2026-10-04T01:00:00.000Z");
     const r = resolveRange("today", undefined, now, SYD);
     expect(r).toEqual({
       fromMs: utc("2026-10-03T14:00:00.000Z"), // midnight Oct 4, still AEST +10
-      toMs: utc("2026-10-04T13:00:00.000Z"), // midnight Oct 5, AEDT +11
+      toMs: now,
     });
-    expect(r!.toMs - r!.fromMs).toBe(23 * 3_600_000);
+    expect(r!.toMs - r!.fromMs).toBe(11 * 3_600_000);
   });
 
   it("now-1d preserves the wall clock across the transition (a 23-hour step)", () => {

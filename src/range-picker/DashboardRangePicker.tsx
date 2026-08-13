@@ -28,7 +28,14 @@ import { Input } from "../primitives/input";
 import { PrefDateInput } from "./PrefDateInput";
 import type { DateStyle } from "../lib/formatDateField";
 import { cn } from "../lib/cn";
-import { isoDayOf, labelOf, resolveRange, shortLabelOf } from "../timerange";
+import {
+  isoDayOf,
+  labelOf,
+  resolveRange,
+  shortLabelOf,
+  weekStartOf,
+  type WeekStart,
+} from "../timerange";
 import { browserZone, preferredZone } from "../timerange/zone";
 import { useKitOptional } from "../provider/KitProvider";
 import { RANGE_BANDS, RANGE_COLUMNS } from "./rangePresets";
@@ -44,6 +51,10 @@ export interface DashboardRangePickerProps {
   compact?: boolean;
   /** The viewer's resolved `date_style`, threaded to the absolute-tab date fields. Absent ⇒ `eu`. */
   dateStyle?: DateStyle;
+  /** The viewer's resolved `first_day_of_week`. INJECTED for the same reason `dateStyle` is: resolving
+   *  it needs the host's session store and two network calls. Absent ⇒ Monday, the grammar the lb
+   *  conformance fixture pins — so an un-injected picker is never silently on a different calendar. */
+  weekStart?: WeekStart;
   /** Fired just before `onApply` when the user commits a window. The shell passes `markUserRefresh`
    *  so its panels show the refreshing indicator while the re-query lands; that is dashboard-refresh
    *  telemetry, not picker logic, so it is injected rather than shipped. Absent ⇒ nothing extra. */
@@ -59,15 +70,20 @@ export function DashboardRangePicker({
   timezone,
   compact,
   dateStyle,
+  weekStart: weekStartProp,
   onUserApply,
 }: DashboardRangePickerProps) {
   const [open, setOpen] = useState(false);
   // Absent ⇒ the viewer's LOCAL zone, never UTC — the preview must name the same day the window
   // actually resolves to (`rangeTimezone`), or it tells the operator the wrong date. The zone comes
-  // from the `KitProvider` when there is one; the picker still renders standalone (a story, a test)
-  // and falls back to the browser zone, which is what the shell did before the extraction.
+  // from the `KitProvider` when there is one; the picker still renders standalone and falls back to
+  // the browser zone, which is what the shell did before the extraction.
   const kit = useKitOptional();
   const tz = preferredZone(kit?.zone ?? browserZone, timezone);
+  // The viewer's week start — re-anchors `this-week`/`now/w` in the preview so the named window agrees
+  // with the one the toolbar actually commits and resolves. `weekStartOf` folds an unknown/absent
+  // value to Monday, so a host that passes a raw pref string cannot hand the resolver junk.
+  const weekStart = weekStartOf(weekStartProp);
 
   // The RELATIVE free-text draft, seeded from the committed expression when it isn't an absolute pair
   // (an absolute pair belongs to the tab below). Follows outside commits so it never shows stale text.
@@ -75,7 +91,10 @@ export function DashboardRangePicker({
   const [rel, setRel] = useState(seedRel);
   // The ABSOLUTE draft. Seeded from the committed pair when it IS one, else empty until edited.
   const seedAbs = useMemo(
-    () => (ISO_DAY.test(from) && to && ISO_DAY.test(to) ? { from, to } : { from: "", to: "" }),
+    () =>
+      ISO_DAY.test(from) && to && ISO_DAY.test(to)
+        ? { from, to }
+        : { from: "", to: "" },
     [from, to],
   );
   const [draft, setDraft] = useState(seedAbs);
@@ -94,15 +113,20 @@ export function DashboardRangePicker({
   const relPreview = useMemo(() => {
     const text = rel.trim();
     if (!text) return null;
-    const r = resolveRange(text, undefined, nowMs, tz);
-    if (!r) return { error: `Not a range expression — try last-3-months, this-month, now-4h.` };
-    return { text: `${text} → ${isoDayOf(r.fromMs, tz)} → ${isoDayOf(r.toMs, tz)}` };
+    const r = resolveRange(text, undefined, nowMs, tz, weekStart);
+    if (!r)
+      return {
+        error: `Not a range expression — try last-3-months, this-month, now-4h.`,
+      };
+    return {
+      text: `${text} → ${isoDayOf(r.fromMs, tz)} → ${isoDayOf(r.toMs, tz)}`,
+    };
   }, [rel, nowMs, tz]);
 
   const commit = (range: { from: string; to?: string }) => {
-    // A new window is a USER-driven refresh, so the host may want its panels to show the refreshing
-    // indicator while the re-query lands. It never bumps `refreshKey` (the scope re-keys the query
-    // directly), which is why the intent is signalled here rather than only in `useAutoRefresh`.
+    // A new window is a USER-driven refresh, so the panels may show their refreshing indicator while
+    // the re-query lands. It never bumps `refreshKey` (the scope re-keys the query directly), which is
+    // why the intent is marked here rather than only in `useAutoRefresh`.
     onUserApply?.();
     onApply(range);
     setOpen(false);
@@ -118,7 +142,10 @@ export function DashboardRangePicker({
           variant="outline"
           size="sm"
           // 44px tap target on a phone (compact), compact 32px row on desktop.
-          className={cn("dash-kit gap-1.5 px-2.5 text-xs font-normal", compact ? "h-11 md:h-8" : "h-8")}
+          className={cn(
+            "dash-kit gap-1.5 px-2.5 text-xs font-normal",
+            compact ? "h-11 md:h-8" : "h-8",
+          )}
           title="Change the dashboard time range"
         >
           <CalendarRange size={13} className="text-muted" />
@@ -133,10 +160,10 @@ export function DashboardRangePicker({
           column per band, so the popover keeps the viewport clamp it always had. */}
       <DropdownMenuContent
         align="end"
-        // `dash-kit` on the CONTENT too, not only the trigger: the content renders in a Radix PORTAL
-        // at the document root, outside the trigger's subtree, so a scope class on the trigger alone
-        // would leave every utility in the popover unstyled.
         className={cn(
+          // `dash-kit` on the CONTENT too, not only the trigger: the content renders in a Radix PORTAL
+          // at the document root, outside the trigger's subtree, so a scope class on the trigger alone
+          // would leave every utility in the popover unstyled.
           "dash-kit max-w-[calc(100vw-2rem)] p-0",
           compact ? "w-[calc(100vw-2rem)]" : "w-[42rem]",
         )}
@@ -158,7 +185,12 @@ export function DashboardRangePicker({
                 </span>
                 <span className="text-[0.65rem] text-muted">{band.hint}</span>
               </div>
-              <div className={cn("grid gap-x-1 gap-y-0.5", compact ? "grid-cols-2" : "grid-cols-5")}>
+              <div
+                className={cn(
+                  "grid gap-x-1 gap-y-0.5",
+                  compact ? "grid-cols-2" : "grid-cols-5",
+                )}
+              >
                 {RANGE_COLUMNS.map((col) => {
                   const cell = band.cells[col];
                   // An empty cell still occupies its column on desktop, so the units stay aligned
@@ -188,7 +220,10 @@ export function DashboardRangePicker({
                           >
                             <Check
                               size={12}
-                              className={cn("shrink-0 text-accent", !selected && "invisible")}
+                              className={cn(
+                                "shrink-0 text-accent",
+                                !selected && "invisible",
+                              )}
                             />
                             <span className="truncate">{preset.label}</span>
                           </Button>
@@ -206,12 +241,15 @@ export function DashboardRangePicker({
 
         {/* The RELATIVE expression — anything the grammar speaks that the preset list doesn't. */}
         <div className="space-y-1.5 px-3 py-2.5">
-          <div className="text-[0.7rem] uppercase tracking-wide text-muted">Relative range</div>
+          <div className="text-[0.7rem] uppercase tracking-wide text-muted">
+            Relative range
+          </div>
           <form
             className="flex items-center gap-1.5"
             onSubmit={(e) => {
               e.preventDefault();
-              if (rel.trim() && relPreview && !("error" in relPreview)) commit({ from: rel.trim() });
+              if (rel.trim() && relPreview && !("error" in relPreview))
+                commit({ from: rel.trim() });
             }}
           >
             <Input
@@ -235,7 +273,10 @@ export function DashboardRangePicker({
             ("error" in relPreview ? (
               <p className="text-[0.7rem] text-danger">{relPreview.error}</p>
             ) : (
-              <p className="truncate text-[0.7rem] text-muted" title={relPreview.text}>
+              <p
+                className="truncate text-[0.7rem] text-muted"
+                title={relPreview.text}
+              >
                 {relPreview.text}
               </p>
             ))}
@@ -245,7 +286,9 @@ export function DashboardRangePicker({
 
         {/* The absolute window. Edited as a draft and committed by Apply — see the header note. */}
         <div className="space-y-2 px-3 py-2.5">
-          <div className="text-[0.7rem] uppercase tracking-wide text-muted">Absolute range</div>
+          <div className="text-[0.7rem] uppercase tracking-wide text-muted">
+            Absolute range
+          </div>
           <div className="flex items-center gap-1.5 text-xs text-muted">
             <PrefDateInput
               aria-label="dashboard range from"
@@ -264,7 +307,9 @@ export function DashboardRangePicker({
             />
           </div>
           {absInvalid ? (
-            <p className="text-[0.7rem] text-danger">The start date must not be after the end date.</p>
+            <p className="text-[0.7rem] text-danger">
+              The start date must not be after the end date.
+            </p>
           ) : (
             <p className="text-[0.7rem] text-muted">
               The end date is exclusive — it ends at the start of that day.
@@ -275,7 +320,9 @@ export function DashboardRangePicker({
             className="h-8 w-full text-xs"
             disabled={!absDirty || absInvalid || !draft.from || !draft.to}
             title={
-              absDirty ? "Apply this range — re-queries every panel" : "This range is already applied"
+              absDirty
+                ? "Apply this range — re-queries every panel"
+                : "This range is already applied"
             }
             onClick={() => commit({ from: draft.from, to: draft.to })}
           >

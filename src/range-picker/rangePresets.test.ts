@@ -4,7 +4,8 @@
 // survives the regrid, plus the sub-hour rows), (2) that every expression actually resolves through
 // the shared resolver, (3) the grid's shape and the deliberate empty cells, (4) that the two bands
 // really do mean different things, and (5) the semantics the old resolve-at-click presets owned:
-// exclusive `to` (a zero-width "Today" would draw nothing) and Monday-start weeks.
+// exclusive `to`, Monday-start weeks, and the current-period tokens (`today`, `this-week`, …)
+// running from the period start to NOW rather than spanning the whole period.
 
 import { describe, expect, it } from "vitest";
 
@@ -66,18 +67,18 @@ describe("RANGE_PRESETS", () => {
     }
   });
 
-  it("Today is a whole exclusive-to day (never the zero-width window that draws nothing)", () => {
+  it("Today runs midnight → NOW (a live window, never a frozen whole day)", () => {
     const today = RANGE_PRESETS.find((p) => p.id === "today")!;
     const r = resolveRange(today.expr, undefined, NOW, "UTC")!;
     expect(r.fromMs).toBe(Date.parse("2026-08-05T00:00:00.000Z"));
-    expect(r.toMs).toBe(Date.parse("2026-08-06T00:00:00.000Z"));
+    expect(r.toMs).toBe(NOW);
   });
 
-  it("This week starts Monday (the calendar the picker paints)", () => {
+  it("This week starts Monday and ends at now (the calendar the picker paints)", () => {
     const week = RANGE_PRESETS.find((p) => p.id === "this-week")!;
     const r = resolveRange(week.expr, undefined, NOW, "UTC")!;
     expect(r.fromMs).toBe(Date.parse("2026-08-03T00:00:00.000Z")); // Monday
-    expect(r.toMs).toBe(Date.parse("2026-08-10T00:00:00.000Z"));
+    expect(r.toMs).toBe(NOW);
   });
 
   it("the flat roster is exactly the grid, in reading order", () => {
