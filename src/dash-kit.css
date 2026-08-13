@@ -1,0 +1,53 @@
+/* The kit's ONE stylesheet, and the whole of its CSS contract.
+ *
+ * THE HOST OWNS THE THEME. The kit CONSUMES it. That is not a convention we hand-enforce — it is why
+ * everything here is written the way it is:
+ *
+ *   1. NO `:root { }` and NO `.dark { }` token block. Either one redefines the host's `--bg`/`--accent`/…
+ *      globally and repaints the whole host app. A kit stylesheet that reintroduces one is a REGRESSION;
+ *      `scripts/assert-no-theme-block.mjs` fails the build on it so it cannot land by accident.
+ *   2. NO `@tailwind base` / Preflight. Preflight is a global `*, body, h1-h6, button, a…` reset that
+ *      would restyle the host chrome. Only `tailwindcss/theme.css` is imported, and utilities are
+ *      generated NESTED under `.dash-kit` so every compiled class is `.dash-kit .p-4 { … }` — confined
+ *      to the kit's own subtree, never matching a host element.
+ *   3. Every token below is an ALIAS of a host shadcn var with a standalone fallback. Inside a host
+ *      that defines `--bg`/`--panel`/…, the kit inherits the host's theme through the cascade and a
+ *      light/dark toggle just works. Outside one (a story, a bare test page) the fallback keeps it
+ *      legible. The kit never DEFINES `--bg`; it only reads it.
+ *   4. A canvas/JS surface cannot read a CSS var, so it reads `ctx.theme` through `useKitTheme()` and
+ *      recolors on change. That is the ONLY themed path that is not this file.
+ *
+ * The same discipline `@nube/panel` / `@nube/nav-rail` / `@nube/source-picker` already ship; the kit
+ * inherits it rather than inventing a second one.
+ */
+
+@layer theme, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+
+/* Scoped utilities: generated classes are emitted UNDER `.dash-kit` only. */
+@layer utilities {
+  .dash-kit {
+    @tailwind utilities;
+  }
+}
+
+/* The kit's token surface — aliases of the host's, never definitions of the host's. */
+.dash-kit {
+  --dk-bg: hsl(var(--bg, 222 14% 11%));
+  --dk-panel: hsl(var(--panel, 232 15% 9%));
+  --dk-fg: hsl(var(--fg, 210 20% 96%));
+  --dk-muted: hsl(var(--muted, 220 9% 60%));
+  --dk-border: hsl(var(--border, 220 10% 24%));
+  --dk-accent: hsl(var(--accent, 217 91% 60%));
+  --dk-radius: var(--radius, 0.5rem);
+}
+
+@theme {
+  --color-dk-bg: var(--dk-bg);
+  --color-dk-panel: var(--dk-panel);
+  --color-dk-fg: var(--dk-fg);
+  --color-dk-muted: var(--dk-muted);
+  --color-dk-border: var(--dk-border);
+  --color-dk-accent: var(--dk-accent);
+}

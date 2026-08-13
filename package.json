@@ -1,0 +1,59 @@
+{
+  "name": "@nube/dash-kit",
+  "version": "0.1.0",
+  "description": "The Lazybones dashboard machinery — the read cache, the time-range picker, the source picker, insights, the panel and the nav rail — published as ONE kit an extension UI can consume. The host injects how to reach the node (a single leashed `(tool, args)` call), so the same code path drives the shell gateway OR an extension bridge.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NubeDev/lb-ui-kit.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/dash-kit.cjs",
+  "module": "./dist/dash-kit.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/dash-kit.js",
+      "require": "./dist/dash-kit.cjs"
+    },
+    "./style.css": "./dist/dash-kit.css",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "pnpm typecheck && pnpm test && pnpm build && node scripts/assert-single-copy.mjs && node scripts/assert-no-theme-block.mjs"
+  },
+  "peerDependencies": {
+    "@tanstack/query-core": "^5.101.4",
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/query-core": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@tanstack/query-core": "5.101.4",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "@vitejs/plugin-react": "^4.2.0",
+    "jsdom": "^25.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^4.0.0",
+    "typescript": "~5.6.3",
+    "vite": "^5.0.0",
+    "vite-plugin-dts": "^4.0.0",
+    "vitest": "^2.0.0"
+  }
+}

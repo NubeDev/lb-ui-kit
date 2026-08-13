@@ -1,0 +1,39 @@
+# CI is the wall that keeps the kit's three structural invariants true on every PR, not just when a
+# reviewer remembers them: one React / one query-core, no host theme block in the compiled CSS, and a
+# committed `dist/` that actually matches `src/` (a git dep serves the tree, so a stale dist ships).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - name: One @tanstack/query-core, externalised
+        run: node scripts/assert-single-copy.mjs
+      - name: No host theme block in the compiled CSS
+        run: node scripts/assert-no-theme-block.mjs
+      - name: dist/ is committed and matches src/
+        # A git-dep consumer installs the tree as-is — there is no build step on their side. A dist that
+        # drifts from src ships the OLD code under the NEW tag, which is invisible until it misbehaves.
+        run: |
+          if ! git diff --quiet -- dist; then
+            echo "::error::dist/ is stale. Run \`pnpm build\` and commit the result."
+            git diff --stat -- dist
+            exit 1
+          fi

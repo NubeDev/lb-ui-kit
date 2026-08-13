@@ -1,0 +1,6 @@
+node_modules/
+*.log
+.DS_Store
+# NOTE: `dist/` is NOT ignored. It is COMMITTED on purpose — consumers pin this repo with a
+# `github:NubeDev/lb-ui-kit#kit-vX.Y.Z` dep, and a git dep installs the tree as-is with no build step.
+# Every `@nube/*` package in the family ships its dist the same way. A missing dist = a broken pin.
