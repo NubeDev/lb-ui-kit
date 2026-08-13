@@ -127,50 +127,17 @@ export {
 } from "./vars";
 export type { Builtins, NavContext, PageContext, VarScope, VarValue } from "./vars";
 
-// ── The transport vocabulary the injected seams speak ────────────────────────────────────────────
-// Types only for now. The source-picker and insights COMPONENTS land in kit-v0.4.0 (Tier 1c); their
-// type modules ship here first because `makeKitClient` is typed against them.
-export type {
-  Action,
-  ChannelRow,
-  DatasourceRow,
-  ExtRow,
-  ExtUi,
-  ExtWidgetOption,
-  Flow,
-  FlowNode,
-  FlowSummary,
-  InboxRow,
-  InsightRow as PickerInsightRow,
-  NodeDescriptor,
-  ParamKind,
-  QuerySummary,
-  RuleParam,
-  RuleSummary,
-  Schema,
-  SchemaColumn,
-  SchemaTable,
-  SectionState,
-  Source,
-  SourceLoaders,
-  SourceSelection,
-} from "./source-picker/types";
+// ── Tier 1c: the substrate — source picker, insights, panel, nav rail ────────────────────────────
+// Moved verbatim from `rubix-ai/ui/packages/*`, which is where the live, diverged copies were. Each
+// keeps its own scoped stylesheet and its own scope root; all four now bundle into the kit's ONE
+// `@nube/dash-kit/style.css`.
+export * from "./source-picker";
+export * from "./insights";
+export * from "./panel";
+export * from "./nav-rail";
 
-export type {
-  Evidence,
-  EvidenceSeries,
-  Insight,
-  InsightEvent,
-  InsightsClient,
-  ListFilter,
-  ListPage,
-  ListQuery,
-  OccCursor,
-  Occurrence,
-  OccurrencePage,
-  Origin,
-  OriginKind,
-  PageCursor,
-  Severity,
-  Status,
-} from "./insights/types";
+// ── The transport vocabulary the injected seams speak ────────────────────────────────────────────
+// `export *` above already re-exports every type module (`source-picker/types`, `insights/types`) —
+// they are what `makeKitClient` is typed against. Nothing extra is needed here; the surface is
+// deliberately not restated, so there is one place a symbol becomes public.
+

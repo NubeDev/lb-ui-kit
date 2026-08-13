@@ -134,16 +134,23 @@ without a consumer lockfile regen is silently green locally and red everywhere e
 | `kit-v0.1.0` | Tier 0 — `KitProvider`, `makeKitClient`, `DASH_KIT_READ_SCOPE`, the transport vocabulary |
 | `kit-v0.2.0` | Tier 1a — `lib/timerange` (the lb-pinned grammar + its conformance fixture), `DashboardRangePicker`, `rangePresets`, `PrefDateInput` |
 | `kit-v0.3.0` | Tier 1b — **the read cache**: batch fan-in, ws-scoped keys, scope narrowing, the per-visit client, the IndexedDB mirror |
+| `kit-v0.4.0` | Tier 1c — the substrate: `source-picker`, `insights`, `panel`, `nav-rail` (moved verbatim; `ui/packages/*` deleted) |
 
-Tier 1c (source-picker / insights / panel / nav-rail) follows as `kit-v0.4.0`. Tier 2 (genui, the viz/chart kit) is deliberately out until a real consumer defines
+Tier 2 (genui, the viz/chart kit) is deliberately out until a real consumer defines
 its edge.
 
 ### Scoping a kit component
 
-Utilities are compiled **nested under `.dash-kit`**, so every kit component puts that class on its own
+Utilities are compiled **nested under a scope root**, so every kit component puts that class on its own
 root — including Radix **portal** content, which renders at the document root outside its trigger's
-subtree and would otherwise be entirely unstyled. `assert-no-theme-block.mjs` fails the build if any
-compiled rule targeting a class escapes that scope.
+subtree and would otherwise be entirely unstyled.
+
+There are five roots: `.dash-kit` (the kit's own) plus `.lb-panel`, `.nav-rail`, `.sp-root` and
+`.ins-root`, which came in with the packages that moved here and already carried their own non-leaky
+scope. They are kept verbatim rather than rewritten — re-scoping every class string would risk visual
+regressions to buy nothing, since a scoped root is a scoped root. `assert-no-theme-block.mjs` fails the
+build if any compiled rule targeting a class escapes all five, and adding a sixth root is a deliberate
+act: it widens what may match.
 
 ## Licence
 

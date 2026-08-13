@@ -3,6 +3,7 @@ import { JSX as JSX_2 } from 'react';
 import { Persister } from '@tanstack/react-query-persist-client';
 import { Provider } from 'react';
 import { QueryClient } from '@tanstack/react-query';
+import type * as React_2 from 'react';
 import { ReactNode } from 'react';
 
 /** A write action — the tool a switch/slider/button calls on interaction. `argsTemplate` carries a
@@ -25,6 +26,16 @@ export declare const BROWSER_TZ = "browser";
  *  Never guesses UTC when a real zone is available — a chart silently drawn in the wrong zone is the
  *  failure mode this exists to avoid. */
 export declare function browserZone(): string;
+
+/** The builder's group list — the read groups plus the `action` (write control) group, ordered as the
+ *  widget builder shows them (action before widget). A host authoring controls uses this. */
+export declare const BUILDER_SOURCE_GROUPS: SourceGroup[];
+
+/** Assemble the whole picker from loader results. Series/live from `series`; extension + widget from
+ *  `extensions`; flows from `flows`+`descriptors`; the SQL entry is always offered (the host's parse
+ *  gate + ws wall make it safe regardless of which tables exist). Datasources are the DROPDOWN roster
+ *  (`SourceInputs.datasources`), surfaced by the UI separately from these entries. */
+export declare function buildSourceEntries(inputs: SourceInputs): SourceEntry[];
 
 /** The prefix that marks the BUILT-IN namespace. A `__`-led name resolves from `VarScope.builtins`, so a
  *  user variable named there is permanently shadowed — which is why `validateVariables` rejects it. */
@@ -53,6 +64,161 @@ export declare type CalUnit = "second" | "minute" | "hour" | "day" | "week" | "m
  *  order (order is meaningful for targets/paths). The result is stable across unrelated identity churn, so
  *  two structurally-equal specs hash to the SAME key. */
 export declare function canon(value: unknown): unknown;
+
+/** The canonical section registry. A host renders whichever of these its loaders cover; ids stay
+ *  opaque (rule 10 — no core branch on a host's "known subsystem list"). */
+export declare const CATALOG_SECTION_SPECS: CatalogSectionSpec[];
+
+/** A teaching empty state — used by per-kind row renderers when the section is ready but holds zero
+ *  rows (e.g. "No external datasources registered."). */
+export declare function CatalogEmpty({ children }: {
+    children: ReactNode;
+}): JSX_2.Element;
+
+/** What a click in the explorer yields — a tagged row the HOST maps onto its snippet/bind. Each kind
+ *  carries ONLY the fields a host needs to form that mapping; the package owns no host semantics
+ *  (rule 10). The host's `onSelect` is the one place "what this pick MEANS" is decided. */
+export declare type CatalogEntry = {
+    kind: "datasource";
+    id: string;
+    name: string;
+    rowKind: string;
+    endpoint?: string;
+} | {
+    kind: "table";
+    id: string;
+    table: string;
+} | {
+    kind: "column";
+    id: string;
+    table: string;
+    column: string;
+} | {
+    kind: "series";
+    id: string;
+    name: string;
+} | {
+    kind: "channel";
+    id: string;
+    name: string;
+} | {
+    kind: "insight";
+    id: string;
+    title: string;
+    severity?: string;
+    status?: string;
+} | {
+    kind: "inbox";
+    id: string;
+    channel: string;
+} | {
+    kind: "query";
+    id: string;
+    name: string;
+    target?: string;
+};
+
+/** The system-catalog explorer panel. */
+export declare function CatalogExplorer({ sections, onSelect, onLoadSection, sectionSpecs, className, }: CatalogExplorerProps): JSX_2.Element;
+
+export declare interface CatalogExplorerProps {
+    /** The per-section state from `useCatalog`. Sections absent here (the host wired no loader) are
+     *  skipped even if `sections` lists them — absent loader ⇒ absent section. */
+    sections: CatalogSections;
+    /** Called with the picked `CatalogEntry` whenever a row is clicked. The host maps the entry onto
+     *  its own snippet/bind (a Rhai `source("name")`, a SQL table name, a dashboard cell source). */
+    onSelect: (entry: CatalogEntry) => void;
+    /** Fired the first time a user expands a section whose state is still `idle` — the host's cue to
+     *  run that section's loader. Wire to `useCatalog`'s `loadSection`. Optional (a host that pre-seeds
+     *  `ready` data never triggers it); omitting means every section renders open + ready (the eager
+     *  contract from before lazy loading — render tests use this). */
+    onLoadSection?: (kind: CatalogSectionKind) => void;
+    /** Which sections to render + their labels/hints, in display order. Defaults to the canonical
+     *  `CATALOG_SECTION_SPECS`. A host that wants a subset (e.g. just `datasources` + `series`) passes
+     *  its own filtered list. */
+    sectionSpecs?: CatalogSectionSpec[];
+    /** Extra className on the root. */
+    className?: string;
+}
+
+/** A table → column tree with click-to-pick, using shadcn's file-tree pattern. Tolerates an empty
+ *  schema (the parent shows the teaching-empty/deny; this renders nothing for `tables: []`). */
+export declare function CatalogSchemaTree({ schema, onSelect }: CatalogSchemaTreeProps): JSX_2.Element;
+
+export declare interface CatalogSchemaTreeProps {
+    schema: Schema;
+    /** Called when a table header (no `column`) or a column row is clicked. */
+    onSelect: (entry: CatalogEntry) => void;
+}
+
+/** A collapsible section: a clickable header (chevron + title + hint) + the body. The header toggles
+ *  open/close; the first open of an `idle` section fires `onOpen` so the host can lazy-load it. */
+export declare function CatalogSection<T>({ spec, state, onOpen, defaultOpen, children }: CatalogSectionProps<T>): JSX_2.Element;
+
+/** The schema of `CatalogSections.data` per section kind. The explorer kinds carry row arrays (or
+ *  `Schema` for the local-tables section, which the tree renderer walks); the picker-only kinds
+ *  (`extensions`/`rules`/`flowSummaries`/`flowDescriptors`) carry the row shapes `loadSourcePicker`
+ *  composes from. */
+export declare interface CatalogSectionData {
+    datasources: DatasourceRow[];
+    schema: Schema;
+    series: string[];
+    channels: ChannelRow[];
+    insights: PickerInsightRow[];
+    inbox: InboxRow[];
+    queries: QuerySummary[];
+    extensions: ExtRow[];
+    rules: RuleSummary[];
+    flowSummaries: FlowSummary[];
+    flowDescriptors: NodeDescriptor[];
+}
+
+/** The catalog's section vocabulary. Each kind is 1:1 with a single `SourceLoaders` read. Adding a
+ *  section = adding a kind here + a row type + a loader entry on `SourceLoaders`. The renderer is
+ *  kind-agnostic (it renders a `CatalogSectionSpec`'s label/hint + the section's `SectionState`),
+ *  so a new kind needs no renderer change.
+ *
+ *  NOTE: this is the FULL vocabulary the catalog CAN cover (so `loadSourcePicker` projects every
+ *  loader it needs off the same per-section state). `CATALOG_SECTION_SPECS` below is the SUBSET the
+ *  EXPLORER skin renders today — a host composes which sections its surface shows. `extensions`,
+ *  `rules`, `flowSummaries`, `flowDescriptors` are picker-only projections today (no explorer
+ *  section) but share the orchestration. */
+export declare type CatalogSectionKind = "datasources" | "schema" | "series" | "channels" | "insights" | "inbox" | "queries" | "extensions" | "rules" | "flowSummaries" | "flowDescriptors";
+
+export declare interface CatalogSectionProps<T> {
+    spec: CatalogSectionSpec;
+    state: SectionState<T>;
+    /** Fired the first time the user expands a section whose state is still `idle` — the host's cue to
+     *  trigger this section's loader. The collapsible handles its own open/close thereafter; this is
+     *  the lazy-load trigger, not an open/close controller. Optional (a host that pre-seeds `ready`
+     *  state never triggers it). */
+    onOpen?: () => void;
+    /** Force the section open on first mount (default: open iff `state` is past `idle`). Tests + hosts
+     *  that pre-seed `ready` data pass `defaultOpen` so rows render without a click. */
+    defaultOpen?: boolean;
+    /** The ready-body renderer — receives the section's data and returns the row tree. The explorer
+     *  composes this per kind (datasource rows / the schema table tree / channel rows / …). */
+    children: (data: T) => ReactNode;
+}
+
+/** The catalog's per-section honest state. A section is `undefined` when the host supplied no
+ *  loader for it (absent ⇒ absent section); `{status:"loading"}` while in flight; `{status:"ready"}`
+ *  on success; `{status:"denied"}` on throw (capability wall — never a fake list). */
+export declare type CatalogSections = {
+    [K in CatalogSectionKind]?: SectionState<CatalogSectionData[K]>;
+};
+
+/** A section's declarative descriptor — its kind (loader-keyed), its human label, and a one-line
+ *  hint. Exported as `CATALOG_SECTION_SPECS` (the canonical list); a host composes its surface by
+ *  which loaders it wires (absent loader ⇒ absent section). */
+export declare interface CatalogSectionSpec {
+    kind: CatalogSectionKind;
+    label: string;
+    hint: string;
+}
+
+/** Channel rows → catalog entries. */
+export declare function channelEntries(rows: ChannelRow[]): CatalogEntry[];
 
 /** A registered channel row (the subset of `channel.list` the catalog needs — id only; the registry
  *  record carries more, the package keeps the seam minimal). */
@@ -113,6 +279,9 @@ export declare interface DashboardRangePickerProps {
  *  without the provider is a wiring bug, so we throw rather than silently key everything under "". */
 export declare const DashboardWsContext: Context<string | null>;
 
+/** Datasource rows → catalog entries. The id is the name (stable round-trip key). */
+export declare function datasourceEntries(rows: DatasourceRow[]): CatalogEntry[];
+
 /** `datasource.list` — one entry per ws (the bundle and the Query-tab dropdown read the same key). */
 export declare function datasourceListKey(ws: string): readonly ["datasource.list", string];
 
@@ -160,6 +329,10 @@ export declare const DEFAULT_RANGE_EXPR = "last-30-days";
  *  action (dashboard-query-acceleration §C, default-on decision). A board opts OUT to live by setting
  *  its per-page freshness to exactly `0`. Staleness is bounded by this window (≤120 s). */
 export declare const DEFAULT_TTL_S = 120;
+
+/** A client whose reads reject — models a workspace granted no `insight.list` cap. The hooks must
+ *  surface this as an honest error, never a fabricated list. */
+export declare function denyClient(): InsightsClient;
 
 export declare type Endpoint = 
 /** `now`, `now±<n><unit>`, optional `/<unit>` snap (truncate to the start of that unit). */
@@ -228,6 +401,10 @@ export declare interface EvidenceSeries {
     unit?: string;
 }
 
+/** Installed-extension TOOL entries — split an extension's `ui`/`widgets[]` scope tools into READ
+ *  sources and WRITE actions by name heuristic. (A tile's finished-widget entry is `extWidgetEntries`.) */
+export declare function extensionEntries(rows: ExtRow[]): SourceEntry[];
+
 /** Every distinct variable name referenced in `template` (in first-seen order), built-ins included. */
 export declare function extractVarNames(template: string): string[];
 
@@ -258,9 +435,14 @@ export declare interface ExtUi {
     options?: ExtWidgetOption[];
 }
 
+/** Packaged-tile entries — ONE per `row.widgets[]` `[[widget]]`. Selecting it yields a
+ *  `view: ext:<id>/<widget>` (the tile owns its data via `scope ∩ grant`). A disabled ext contributes
+ *  none. The `viewKey` uses the SAME `widgetIdOf` slug the renderer parses. */
+export declare function extWidgetEntries(rows: ExtRow[]): SourceEntry[];
+
 /** One manifest-declared widget option def (mirrors the node's `ExtUiOption`) — the shape the host
  *  editor renders. Opaque relay data; the picker package never interprets `control`/`scope`. */
-export declare interface ExtWidgetOption {
+declare interface ExtWidgetOption {
     id: string;
     label: string;
     scope: "options" | "fieldConfig";
@@ -294,6 +476,12 @@ export declare interface FlowNode {
  *  node/port/path CLIENT-SIDE from the shared whole-flow read (scope goal 4). */
 export declare function flowNodeStateKey(ws: string, flowId: string, tick: number): readonly ["flows.node_state", string, string, number];
 
+/** Flows entries — one per (flow, node, INPUT/OUTPUT port). An INPUT port → a write Action
+ *  (`flows.inject`, a control drives the node's retained input); an OUTPUT port → a read Source
+ *  (`flows.node_state`, extract this node's port). A node whose descriptor is missing contributes no
+ *  ports (honest empty, never a guess). The author sees `flow › node › port (input|output)`. */
+export declare function flowsEntries(flows: Flow[], descriptors: NodeDescriptor[]): SourceEntry[];
+
 /** A flow's summary (from `flows.list`). */
 export declare interface FlowSummary {
     id: string;
@@ -316,6 +504,9 @@ export declare interface FreshnessInputs {
 }
 
 export declare const FreshnessProvider: Provider<number>;
+
+/** Inbox rows → catalog entries. */
+export declare function inboxEntries(rows: InboxRow[]): CatalogEntry[];
 
 /** An inbox item summary row (the subset of `inbox.list`'s `Item` the catalog renders). */
 export declare interface InboxRow {
@@ -344,6 +535,33 @@ export declare interface Insight {
     producer: string;
 }
 
+/** The ack/resolve/dismiss button row. Renders only the actions the current status allows. */
+export declare function InsightActions({ insight, actingOn, onAck, onResolve, onDismiss, }: InsightActionsProps): JSX_2.Element;
+
+export declare interface InsightActionsProps {
+    insight: Insight;
+    /** The in-flight action (drives the spinner + disable), or null. */
+    actingOn?: "ack" | "resolve" | null;
+    onAck?: () => void;
+    onResolve?: () => void;
+    /** Optional local dismiss (hide the row) — distinct from `resolve` (a durable status change). */
+    onDismiss?: () => void;
+}
+
+export declare interface InsightDetailState {
+    insight: Insight | null;
+    occurrences: OccurrencePage | null;
+    error: string | null;
+    loading: boolean;
+    /** Ack/resolve-in-flight action, or null when idle. */
+    actingOn: "ack" | "resolve" | null;
+    refresh: () => void;
+    act: (action: "ack" | "resolve") => Promise<void>;
+}
+
+/** Insight rows → catalog entries. */
+export declare function insightEntries(rows: PickerInsightRow[]): CatalogEntry[];
+
 /** A live insight event on the `insight.watch` feed. Mirrors `lb_insights::RaiseEvent`. */
 export declare interface InsightEvent {
     kind: "raise" | "ack" | "resolve";
@@ -354,6 +572,27 @@ export declare interface InsightEvent {
     count: number;
     ts: number;
 }
+
+/** Render one insight row. */
+export declare function InsightRow({ insight, selected, onSelect, showStatus, showSeverity, actions, now, }: InsightRowProps): JSX_2.Element;
+
+export declare interface InsightRowProps {
+    insight: Insight;
+    selected?: boolean;
+    /** Click handler — present → the row is a button; absent → a static row (read-only). */
+    onSelect?: (id: string) => void;
+    /** Which badges to show on the side column. Status shows by default; severity is already carried by
+     *  the leading dot, so its redundant chip is off by default (opt in for a legend-style row). */
+    showStatus?: boolean;
+    showSeverity?: boolean;
+    /** Optional inline actions node (rendered below the row body) — the acknowledge widget's buttons. */
+    actions?: ReactNode;
+    /** `now` for the time-ago (test determinism). */
+    now?: number;
+}
+
+/** Acknowledge preset — each row carries ack / resolve / dismiss. */
+export declare function InsightsAckWidget(props: Omit<InsightsWidgetProps, "interactive">): JSX_2.Element;
 
 /** The injected transport seam — how a host reaches the node's `insight.*` verbs. Every method maps
  *  1:1 to a verb; the host implements them over its own transport (the shell's `/mcp/call` bridge, an
@@ -371,6 +610,45 @@ export declare interface InsightsClient {
     occurrences(insightId: string, cursor?: OccCursor, limit?: number): Promise<OccurrencePage>;
     /** Optional live tail — `onEvent` per raise/ack/resolve; returns an unsubscribe. Absent → no feed. */
     subscribe?(onEvent: (event: InsightEvent) => void): () => void;
+}
+
+/** Read-only preset — a glanceable list, no actions. */
+export declare function InsightsReadWidget(props: Omit<InsightsWidgetProps, "interactive">): JSX_2.Element;
+
+export declare interface InsightsState {
+    items: Insight[];
+    error: string | null;
+    loading: boolean;
+    /** Ack/resolve-in-flight item id, or null when idle (per-row disable + spin, the inbox pattern). */
+    actingOn: string | null;
+    /** The keyset cursor for the next page, or null when the current list is the last page. */
+    nextCursor: PageCursor | null;
+    refresh: () => Promise<void>;
+    loadMore: () => Promise<void>;
+    setFilter: (filter: ListQuery) => void;
+    act: (id: string, action: "ack" | "resolve") => Promise<void>;
+}
+
+/** The insights widget. Read-only or acknowledge, one component. */
+export declare function InsightsWidget({ client, filter, title, interactive, showRefresh, paged, onSelect, now, }: InsightsWidgetProps): JSX_2.Element;
+
+export declare interface InsightsWidgetProps {
+    /** The injected transport seam (how to reach the node's `insight.*` verbs). */
+    client: InsightsClient;
+    /** The starting filter (status / severity / tags / range / limit). Defaults to `{ limit: 20 }`. */
+    filter?: ListQuery;
+    /** Panel title. Defaults to "Insights". */
+    title?: string;
+    /** When true, each row carries ack / resolve / dismiss actions; when false (default), read-only. */
+    interactive?: boolean;
+    /** Show the header refresh button. Default: true. */
+    showRefresh?: boolean;
+    /** Show the "Load more" footer when a next page exists. Default: true. */
+    paged?: boolean;
+    /** Click a row (e.g. to open a host detail surface). Rows are static when omitted. */
+    onSelect?: (id: string) => void;
+    /** `now` for the time-ago (test determinism). */
+    now?: number;
 }
 
 /** True if a name is a built-in global (`__from`, `__user.login`, …) rather than a user variable. */
@@ -481,6 +759,17 @@ export declare interface KitTheme {
  *  `(tool, args) => invoke("mcp_call", { tool, args })`). */
 export declare type KitTransport = ToolCall | CallLike;
 
+/** A dense key/value row — the ce InspectPanel `KV` look on shadcn tokens. */
+export declare function KV({ k, v, keyWidth, className }: KVProps): JSX_2.Element;
+
+export declare interface KVProps {
+    k: ReactNode;
+    v: ReactNode;
+    /** Key-column width in px (ce uses 80). */
+    keyWidth?: number;
+    className?: string;
+}
+
 /** The label of a committed range: a window token names itself; an endpoint pair reads as the literal
  *  expressions ("2026-07-27 → 2026-08-03", "now-4h → now"). An unparseable value prints verbatim —
  *  labelling never throws and never lies about what the URL says. */
@@ -514,6 +803,26 @@ export declare interface ListQuery extends ListFilter {
     cursor?: PageCursor;
     limit?: number;
 }
+
+/** Live (Zenoh) entries — each series also offers a live `series.watch` stream. */
+export declare function liveEntries(seriesNames: string[]): SourceEntry[];
+
+/** Run every loader the host wired (deny-tolerant per section). Each present loader resolves to
+ *  `ready`/`denied` independently; absent loaders yield an absent (undefined) section. The
+ *  orchestration is the single source of truth — the picker's deny→empty collapse and the
+ *  explorer's visible tri-state both project off the record this returns.
+ *
+ *  `publish` (optional) is invoked once per section as it resolves, with the cumulative
+ *  `CatalogSections` record — so a caller (the `useCatalog` hook) can surface each section's state
+ *  the moment it lands instead of waiting for every loader. Late calls after the caller is
+ *  unmounted/cancelled are the caller's concern (it passes a `publish` that no-ops on cancel). */
+export declare function loadCatalog(loaders: SourceLoaders, publish?: (merge: (current: CatalogSections) => CatalogSections) => void): Promise<CatalogSections>;
+
+/** Run every loader (deny-tolerant; absent loader ⇒ absent input) and fold the results into picker
+ *  entries. The Flows group composes `flows.list` + `flows.nodes` + a per-flow `flows.get` — the
+ *  catalog exposes the first two as `flowSummaries`/`flowDescriptors`; `getFlow` is per-flow so it
+ *  stays picker-side (the catalog is a per-loader record, not a per-item join). */
+export declare function loadSourcePicker(loaders: SourceLoaders): Promise<SourcePickerResult>;
 
 /** Mint the per-visit dashboard client. Called once by the provider (via `useState` initialiser) so the
  *  client is stable across the visit and a fresh one is created on the next mount. */
@@ -553,6 +862,9 @@ export declare function makeVizBatchLoader(call: BatchCall, opts?: VizBatchLoade
  *  we chunk to it rather than send an over-cap batch. */
 export declare const MAX_PANELS = 64;
 
+/** Build a real in-memory client over a seeded set of insights (newest-first by `last_ts`). */
+export declare function memoryClient(seed: Insight[]): InsightsClient;
+
 /** The separator for `${__nav.path}`, matching the breadcrumb. Other separators are composed by hand
  *  from `${__nav.parent.label}` and friends. */
 export declare const NAV_PATH_SEP = " / ";
@@ -578,6 +890,71 @@ export declare interface NavContext {
      *  when choosing which chain to publish (`nav-context.ts`). Carried on the chain only to make that
      *  choice; it renders nothing and produces no `__nav.*` key. */
     dashboardTargeted?: boolean;
+}
+
+/** Internal: items bucketed by `group`, preserving first-seen group order. */
+export declare interface NavGroup {
+    /** undefined = the default, unlabeled group. */
+    label?: string;
+    items: NavItem[];
+}
+
+/** One entry in the rail. `icon` is a component (e.g. a lucide-react icon). */
+export declare interface NavItem {
+    /** Stable id echoed back through `onSelect`; also the active-match key. */
+    id: string;
+    label: string;
+    /** Rendered at 16px; shown alone (with a tooltip) when the rail is collapsed. */
+    icon?: React_2.ComponentType;
+    /** Optional group heading. Items sharing a `group` render under one label, in array
+     *  order; ungrouped items render in the default (unlabeled) group. */
+    group?: string;
+}
+
+/**
+ * An embedded vertical nav, self-themed like NavRail (`hsl(var(--nr-*))` under `.nav-rail`).
+ * Ship the stylesheet with `import '@nube/nav-rail/style.css'`.
+ */
+export declare function NavMenu({ items, active, onSelect, badge, className, "aria-label": ariaLabel, }: NavMenuProps): JSX_2.Element;
+
+export declare interface NavMenuProps {
+    items: NavItem[];
+    active: string | null;
+    onSelect: (id: string) => void;
+    /** Optional trailing badge per item (e.g. a count on "Overrides"). */
+    badge?: (id: string) => number | undefined;
+    /** Extra classes on the `.nav-rail` root — a host theming hook. */
+    className?: string;
+    /** aria-label for the nav landmark. */
+    "aria-label"?: string;
+}
+
+/**
+ * A self-contained, self-themed sidebar. Wrap once at the app's left edge:
+ *
+ *   <NavRail items={items} active={sel} onSelect={setSel} header={<Brand/>} />
+ *
+ * Colors come from `hsl(var(--nr-*))` scoped to `.nav-rail`; override at `:root`, via
+ * `className`, or inline `style` to re-skin without forking. Ship the stylesheet with
+ * `import '@nube/nav-rail/style.css'`.
+ */
+export declare function NavRail({ items, active, onSelect, header, footer, defaultCollapsed, className, }: NavRailProps): React_2.JSX.Element;
+
+export declare interface NavRailProps {
+    /** The entries to show, in order. Group with `group`; gate by caps before passing in. */
+    items: NavItem[];
+    /** The selected item id (or null for none). Marked `aria-current="page"`. */
+    active: string | null;
+    /** Called with the clicked item's id. Routing/content is the host's job. */
+    onSelect: (id: string) => void;
+    /** Brand/logo area at the top; collapses with the rail. */
+    header?: React_2.ReactNode;
+    /** Footer area (e.g. a theme switcher or sign-out). */
+    footer?: React_2.ReactNode;
+    /** Start collapsed to icons. Default: expanded. */
+    defaultCollapsed?: boolean;
+    /** Extra classes on the `.nav-rail` root — a host theming hook. */
+    className?: string;
 }
 
 /** A node descriptor (from `flows.nodes`) — the port lists the picker offers as bindings. */
@@ -619,6 +996,13 @@ export declare interface Origin {
 
 export declare type OriginKind = "rule" | "flow" | "agent" | "ext" | "manual";
 
+/** The producer/run meta line under a title ("rule:cpu-hot · run:abc"). Pure — the UI + a host reuse it. */
+export declare function originLine(origin: {
+    kind: string;
+    ref: string;
+    run?: string;
+}): string;
+
 /** The page-record inputs behind `${__page.*}`. */
 export declare interface PageContext {
     /** The dashboard id — `${__page.id}`, an alias of the shipped `${__dashboard}`. */
@@ -634,6 +1018,34 @@ export declare interface PageContext {
 export declare interface PageCursor {
     ts: number;
     id: string;
+}
+
+/** The reusable resizable side panel — ce InspectPanel look on shadcn primitives. */
+export declare function Panel({ open, onOpenChange, title, description, headerAside, footer, "aria-label": ariaLabel, initialWidth, minWidth, maxWidth, className, children, }: PanelProps): JSX_2.Element;
+
+export declare interface PanelProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    /** The panel heading. */
+    title: ReactNode;
+    /** Sub-heading under the title (optional). */
+    description?: ReactNode;
+    /** Trailing controls on the header row (e.g. a status chip). */
+    headerAside?: ReactNode;
+    /** The action row pinned to the bottom (e.g. Cancel / Save). Omit for a footer-less panel. */
+    footer?: ReactNode;
+    /** aria-label on the dialog content. */
+    "aria-label"?: string;
+    /** Initial width in px. Default 720 — roomy, unlike the old cramped `sm:max-w-3xl`. */
+    initialWidth?: number;
+    /** Min width in px (default 360). */
+    minWidth?: number;
+    /** Max width in px (default 1200 — wide enough to reveal every option column). */
+    maxWidth?: number;
+    /** Extra classes on the docked surface. */
+    className?: string;
+    /** The scrollable body — the host stacks <Section>/<PropTable>/<KV> here. */
+    children: ReactNode;
 }
 
 /** The declared type of a rule param — steers the host's input control + value coercion (mirrors the
@@ -666,6 +1078,15 @@ export declare function parseRangeExpr(raw: string): ParseOutcome;
  *  Returns the unsubscribe — call it on unmount so a dropped client stops writing. */
 export declare function persistQuickCache(client: QueryClient, ws: string): () => void;
 
+/** One `<optgroup>` for a source group, empty-tolerant (no section when it has no entries). Exported so a
+ *  host that renders its own `<select>` (shadcn `Select`, a `FIELD`-classed native select) still uses the
+ *  ONE grouping/labelling implementation — the `<optgroup>` carries no styling, so it drops into any select. */
+export declare function PickerGroup({ entries, group, label, }: {
+    entries: SourceEntry[];
+    group: SourceEntry["group"];
+    label: string;
+}): JSX_2.Element | null;
+
 /** An insight summary row (the subset of `insight.list`'s `items[]` the catalog renders). Severity
  *  + status are optional so a host that only has `id`/`title` still renders. */
 export declare interface PickerInsightRow {
@@ -697,6 +1118,49 @@ export declare function preferredZone(zone: ZoneResolver_2, ...candidates: (stri
 /** The preview projection of a resolved bound: the ISO day when it falls on a midnight in `tz`, else
  *  the day plus wall time — what the picker's live preview prints. */
 export declare function previewBound(ms: number, tz: string): string;
+
+export declare interface PropColumn {
+    /** Column key — also the header text unless `header` is given. */
+    key: string;
+    header?: ReactNode;
+    /** Truncate + ellipsize the cell (with a title tooltip). For long value cells. */
+    ellipsize?: boolean;
+    /** Fixed max width in px for the cell (pairs with ellipsize). */
+    maxWidth?: number;
+    className?: string;
+}
+
+export declare interface PropRow {
+    /** Stable row key. */
+    id: string;
+    /** Cell content per column key. */
+    cells: Record<string, ReactNode>;
+    /** Optional per-row emphasis (e.g. a fault/override row). */
+    tone?: "default" | "warn";
+}
+
+/** A dense, monospace property table — the ce InspectPanel look on shadcn tokens. */
+export declare function PropTable({ columns, rows, empty, className }: PropTableProps): JSX_2.Element;
+
+export declare interface PropTableProps {
+    columns: PropColumn[];
+    rows: PropRow[];
+    /** Shown when rows is empty. */
+    empty?: ReactNode;
+    className?: string;
+}
+
+/** Saved-query rows → catalog entries. The id is the query's slug (stable round-trip key); `target`
+ *  rides along so the explorer's renderer can sub-label a platform query vs a federated one. */
+export declare function queryCatalogEntries(rows: QuerySummary[]): CatalogEntry[];
+
+/** Saved-query entries — one per `query.list` row. Each ⇒ a read `query.run {id}` source: the host
+ *  compiles the saved PRQL/raw text for the target's dialect and dispatches to `store.query`
+ *  (platform) or `federation.query` (datasource), returning the SAME `{columns, rows}` shape every
+ *  other tabular source yields. `query.run` COMPOSES the target's cap, it never widens it (rule 5):
+ *  the caller needs `mcp:query.run:call` AND the underlying target cap, re-checked per call. Whether
+ *  the saved text is currently valid is the author's concern — an honest failure if not. */
+export declare function queryEntries(queries: QuerySummary[]): SourceEntry[];
 
 /** A saved query's summary (the subset of `query.list`'s `queries[]` the picker renders) — a saved
  *  query is a read source (`query.run {id}` → `{columns, rows}`), so it mirrors `RuleSummary`.
@@ -780,6 +1244,34 @@ export declare interface RangePreset {
  *  default is the browser zone, which is byte-identical to the shell's previous behaviour. */
 export declare function rangeTimezone(dashboardTz?: string, prefsTz?: string, zone?: ZoneResolver_2): string;
 
+/** The read/source groups, in display order, with their section labels. `action` is omitted (write
+ *  controls are a separate authoring intent); a host that wants them passes its own list (see
+ *  `BUILDER_SOURCE_GROUPS`). Exported so every consumer renders ONE canonical label set. */
+export declare const READ_SOURCE_GROUPS: SourceGroup[];
+
+export declare interface Resizable {
+    /** Current width in px. */
+    width: number;
+    /** Whether a drag is in progress (host can dim/limit repaint). */
+    dragging: boolean;
+    /** Spread onto the drag handle element. */
+    handleProps: {
+        onPointerDown: (e: React.PointerEvent) => void;
+        onPointerMove: (e: React.PointerEvent) => void;
+        onPointerUp: (e: React.PointerEvent) => void;
+        onKeyDown: (e: React.KeyboardEvent) => void;
+    };
+}
+
+/** The Panel's left-edge drag-to-resize grabber. */
+export declare function ResizeHandle({ resizable, className, "aria-label": ariaLabel }: ResizeHandleProps): JSX_2.Element;
+
+export declare interface ResizeHandleProps {
+    resizable: Resizable;
+    className?: string;
+    "aria-label"?: string;
+}
+
 /** A resolved window: epoch ms, `toMs` exclusive. What `$__from`/`$__to` carry. */
 export declare interface ResolvedRange {
     fromMs: number;
@@ -807,6 +1299,18 @@ export declare interface RuleParam {
     options?: string[];
 }
 
+/** Rules entries — one per saved rule. Each ⇒ a read `rules.run {rule_id}` source: the rule fetches
+ *  from the gated sources, computes over the rows in the cage (the data-stdlib: time/stats/`Frame`),
+ *  and RETURNS records the panel draws (rules-as-source-scope). A rule is the most general query — the
+ *  picker offers it as one opaque tool source, re-gated at the host per call (`mcp:rules.run:call`);
+ *  whether its output is chart-shaped is the rule author's concern, an honest failure if not.
+ *
+ *  `route:false` on the emitted source makes a panel run READ-ONLY (rules-for-widgets-scope slice 2):
+ *  the host skips the `alert()` fan-out so a 30 s auto-refresh doesn't stamp a fresh Inbox item + a
+ *  must-deliver Outbox entry on every repaint. The host composes the arg exactly like the params form;
+ *  `viz.query` never learns the flag exists (it stays an opaque `{tool, args}` to the viz plane). */
+export declare function rulesEntries(rules: RuleSummary[]): SourceEntry[];
+
 /** A saved rule's summary (the subset of `rules.list` the picker needs) — a rule is a read source
  *  (`rules.run {rule_id}` → records), so it mirrors `FlowSummary`. `params` (optional) are the rule's
  *  declared inputs; the picker carries them onto the entry so a host can offer a params form. */
@@ -828,11 +1332,20 @@ export declare interface SchemaColumn {
     type: string;
 }
 
+/** Schema → (table, column) entries — the columns of every table, flattened. The explorer's tree
+ *  groups these under their table; the package exposes them flat so a host that wants a flat
+ *  column picker can also consume them. */
+export declare function schemaColumnEntries(schema: Schema): CatalogEntry[];
+
 /** One local-store table + its columns (the `store.schema` row shape). */
 export declare interface SchemaTable {
     name: string;
     columns: SchemaColumn[];
 }
+
+/** Schema → table entries (one per table). Columns are addressed by the `column` kind via
+ *  `schemaColumnEntries` (the explorer's table→column tree opens a table, then lists its columns). */
+export declare function schemaTableEntries(schema: Schema): CatalogEntry[];
 
 /** Narrow `scope` for `spec`'s cache key: `values` pass through, `builtins` keeps only the names `spec`
  *  actually references (and is omitted entirely when it references none). A non-object scope (or one
@@ -845,6 +1358,18 @@ export declare function scopeKey(spec: unknown, scope: unknown): unknown;
 export declare interface ScopeKeyPart {
     values: unknown;
     builtins?: Builtins;
+}
+
+/** A titled, dense group — the ce InspectPanel `Section` look on shadcn tokens. */
+export declare function Section({ title, aside, className, children }: SectionProps): JSX_2.Element;
+
+export declare interface SectionProps {
+    /** The uppercase group label (e.g. "Properties (12)"). */
+    title: ReactNode;
+    /** Optional trailing controls on the header row (a button, a count, a toggle). */
+    aside?: ReactNode;
+    className?: string;
+    children: ReactNode;
 }
 
 /** A section's load state — never a fake "ready with empty data" when the read was denied. This is
@@ -867,11 +1392,47 @@ export declare type SectionState<T> = {
     error: string;
 };
 
+/** Fold a chosen entry into a `SourceSelection` (drop the labelling fields; keep what the host stores). */
+export declare function selectionOf(entry: SourceEntry): {
+    id: string;
+    source?: Source;
+    action?: Action;
+    viewKey?: string;
+};
+
+/** Series names → catalog entries (one per series). */
+export declare function seriesCatalogEntries(names: string[]): CatalogEntry[];
+
+/** Series entries — each ⇒ `series.read` of that series. */
+export declare function seriesEntries(seriesNames: string[]): SourceEntry[];
+
 /** `series.read` backfill — one entry per (ws, series). N cells on one series share one read (scope goal 4).
  *  The live SSE tail stays OUTSIDE the cache (state vs motion) — this keys only the history backfill. */
 export declare function seriesReadKey(ws: string, series: string): readonly ["series.read", string, string];
 
 export declare type Severity = "info" | "warning" | "critical";
+
+/** Severity floor ordering (info < warning < critical) — a `severity` filter is a FLOOR: selecting
+ *  `warning` means warning-and-above. The index is the numeric rank for comparisons. */
+export declare const SEVERITY_ORDER: Severity[];
+
+/** A severity chip ("CRITICAL" etc.), tinted by the tone key. */
+export declare function SeverityBadge({ severity }: {
+    severity: Severity;
+}): JSX_2.Element;
+
+/** Severity → the semantic color token a host paints with (the FindingsList lesson: tokens, both
+ *  themes, never hex). The look-free {@link severityTone} stays the primitive — this is the ONE
+ *  mapping of those tones onto the shell's CSS custom properties, promoted here (map-widget-scope
+ *  decision 2) once a third view wanted it: `insight-trend`'s overlay, `fdd-matrix`'s cells, and
+ *  `geomap`'s pin badges must not fork the severity palette. */
+export declare function severityColor(s: Severity): string;
+
+/** Numeric rank of a severity (info=0 … critical=2). */
+export declare function severityRank(s: Severity): number;
+
+/** Severity → tone key. */
+export declare function severityTone(s: Severity): Tone;
 
 /** The phone-width label (mobile-friendly-ui §4.2): a token label is already short; an ISO-day pair
  *  compresses to a year-less `Jul 27 – Aug 3` (the full pair is ~200px and clips at 390px). Parsed at
@@ -882,6 +1443,79 @@ export declare function shortLabelOf(from: string, to?: string): string;
 export declare interface Source {
     tool: string;
     args?: Record<string, unknown>;
+}
+
+export declare function SourceCombobox({ entries, value, onSelect, onSelectEntry, loading, groups, "aria-label": ariaLabel, className, placeholder, autoFocus, }: SourceComboboxProps): JSX_2.Element;
+
+export declare interface SourceComboboxProps {
+    /** The assembled entries (from `useSourcePicker`). */
+    entries: SourceEntry[];
+    /** The currently-selected entry id (controlled) — "" for none. */
+    value?: string;
+    /** Called with the chosen entry's selection (or null when cleared). */
+    onSelect: (selection: SourceSelection | null) => void;
+    /** Also called with the RAW entry (or null) — for a host that keys on `entry.id` (e.g. edit-mode
+     *  seeding, or a tool shared across entries like `rules.run`) where the folded selection loses the id.
+     *  Optional; `onSelect` fires regardless. */
+    onSelectEntry?: (entry: SourceEntry | null) => void;
+    /** True while the entries load. */
+    loading?: boolean;
+    /** Which groups show + their order/labels (default: the read groups). */
+    groups?: SourceGroup[];
+    /** Accessible label (default "source"). */
+    "aria-label"?: string;
+    /** Extra className on the root. */
+    className?: string;
+    /** Placeholder for the search input. */
+    placeholder?: string;
+    /** Autofocus the search box on mount (Data Studio focuses it so type-to-search is the first action). */
+    autoFocus?: boolean;
+}
+
+/** A friendly source entry the picker offers. `group` places it; `source`/`action`/`viewKey` is what
+ *  selecting it yields (folded into a `SourceSelection` by the caller). */
+export declare interface SourceEntry {
+    /** Stable id for the option element + round-trip seeding. */
+    id: string;
+    /** The grouping origin (the picker's sections). `widget` is a packaged `[[widget]]` tile (a finished
+     *  widget the developer shipped — distinct from `extension`, which offers an extension's raw tools). */
+    group: "series" | "live" | "extension" | "action" | "sql" | "widget" | "flows" | "rules" | "queries";
+    /** What the author sees — never a raw tool name. */
+    label: string;
+    /** For a `widget` entry: the icon name the tile declared (lucide id). */
+    icon?: string;
+    /** For a `widget` entry: the `ext:<id>/<widget>` view key the tile resolves to. */
+    viewKey?: string;
+    /** For a `widget` entry: `true` if the tile is a frames-in DATA view (its manifest set `data = true`).
+     *  A data widget KEEPS the cell's `sources[]` (the shell resolves them to `ctx.data`) and shows the
+     *  Query + Field tabs; a non-data widget owns its own data and clears targets when picked. */
+    data?: boolean;
+    /** The resolved read source `{tool,args}` (read/scripted views + a control's optional self-read). */
+    source?: Source;
+    /** The resolved write action (control views) — `argsTemplate` gets a `{{value}}` slot filled later. */
+    action?: Action;
+    /** True if the entry's tool writes (drives the Action group + write-capable views). */
+    writes: boolean;
+    /** For a `rules` entry: the rule's declared params, so a host can render a params form around the
+     *  picker and fill the `rules.run` `args.params` (a rule with no params has none/empty). */
+    params?: RuleParam[];
+}
+
+/** One entry in a picker's group list: which source `group` to render and its section label. */
+export declare type SourceGroup = {
+    group: SourceEntry["group"];
+    label: string;
+};
+
+/** Inputs to `buildSourceEntries` — the loader results, each optional (absent → that group is absent). */
+export declare interface SourceInputs {
+    series?: string[];
+    extensions?: ExtRow[];
+    flows?: Flow[];
+    descriptors?: NodeDescriptor[];
+    datasources?: DatasourceRow[];
+    rules?: RuleSummary[];
+    queries?: QuerySummary[];
 }
 
 /** The INJECTED read seam. The host implements each over its own transport (the shell delegates to
@@ -923,8 +1557,43 @@ export declare interface SourceLoaders {
     listInbox?: () => Promise<InboxRow[]>;
 }
 
+export declare function SourcePicker({ entries, value, onSelect, loading, groups, "aria-label": ariaLabel, className, }: SourcePickerProps): JSX_2.Element;
+
+export declare interface SourcePickerData {
+    entries: SourceEntry[];
+    /** The installed extensions (also handed to a cell renderer for `ext:<id>/<widget>` tiles). */
+    installed: ExtRow[];
+    loading: boolean;
+}
+
 /** The source-picker bundle — one entry per ws, shared by the page-level and editor instances (goal 3). */
 export declare function sourcePickerKey(ws: string): readonly ["source-picker", string];
+
+export declare interface SourcePickerProps {
+    /** The assembled entries (from `useSourcePicker`). */
+    entries: SourceEntry[];
+    /** The currently-selected entry id (controlled) — "" for none. */
+    value?: string;
+    /** Called with the chosen entry's selection (or null when cleared to "— pick —"). */
+    onSelect: (selection: SourceSelection | null) => void;
+    /** True while the entries load — shows a loading placeholder. */
+    loading?: boolean;
+    /** Override which groups show + their order/labels (default: the read groups above). */
+    groups?: {
+        group: SourceEntry["group"];
+        label: string;
+    }[];
+    /** Accessible label for the select (default "source"). */
+    "aria-label"?: string;
+    /** Extra className on the root <label> (host layout). */
+    className?: string;
+}
+
+/** The assembled picker data (sans loading flag — the caller owns that). */
+export declare interface SourcePickerResult {
+    entries: SourceEntry[];
+    installed: ExtRow[];
+}
 
 /** What selecting a picker entry yields — the host maps this onto whatever it persists (a dashboard
  *  cell, a scene bind, a variable query, …). Exactly one of `source`/`action`/`viewKey` is set. */
@@ -939,10 +1608,35 @@ export declare interface SourceSelection {
     viewKey?: string;
 }
 
+/** The id of the "SQL query" entry — the visual SQL builder + raw-SQL source over `store.query`. */
+export declare const SQL_SOURCE_ID = "sql:query";
+
+/** The single "SQL query" picker entry. Its `source.tool` is `store.query` so a host's tool set
+ *  includes it (the bridge's leash); the concrete `sql` is filled by the host's SQL editor. */
+export declare function sqlSourceEntry(): SourceEntry;
+
 export declare type Status = "open" | "acked" | "resolved";
+
+/** A status chip ("OPEN" / "ACKED" / "RESOLVED"), tinted by the tone key. */
+export declare function StatusBadge({ status }: {
+    status: Status;
+}): JSX_2.Element;
+
+/** Status → tone key. `open` reads as the primary accent (action due), `acked` as warning (claimed),
+ *  `resolved` as success (done) — the Inbox status register. */
+export declare function statusTone(s: Status): Tone;
 
 /** A step unit for offset arithmetic. `m` = minute, `M` = month (Grafana-compatible). */
 export declare type StepUnit = "s" | "m" | "h" | "d" | "w" | "M" | "q" | "y";
+
+/** A compact relative-time formatter ("2m ago", "1h 22m ago", "3d ago"). `now` defaults to the wall
+ *  clock; pass it explicitly for a deterministic test (the package itself never calls `Date.now()`
+ *  in a way that leaks into a snapshot). */
+export declare function timeAgo(ts: number, now?: number): string;
+
+/** A tone KEY per severity — a stable, look-free token a host maps to its own palette. The package UI
+ *  maps `critical → destructive`, `warning → warning`, `info → accent-2`; a host may map differently. */
+export declare type Tone = "destructive" | "warning" | "accent-2" | "default" | "success";
 
 /** The leashed tool call — the SAME `(tool, args)` an `ExtBridge.call` / `PageBridge.call` /
  *  `WidgetBridge.call` takes, and the same shape `vizBatchLoader`'s `BatchCall` dispatches through.
@@ -953,6 +1647,22 @@ export declare type ToolCall = (tool: string, args?: Record<string, unknown>) =>
 /** Normalise either accepted transport shape to the bare call. A bridge's `call` is generic; the kit's
  *  `ToolCall` deliberately resolves `unknown` so no decode is assumed at the seam. */
 export declare function toolCallOf(transport: KitTransport): ToolCall;
+
+/** Lazy catalog. `loaders` is the host's read seam; `ws` keys the re-init (the workspace switch). The
+ *  initial idle record is computed once per `loaders` reference via `useState`'s lazy initializer —
+ *  every wired section starts `idle` on FIRST render (no useEffect timing gap). The `ws` effect resets
+ *  the record on workspace switch (the user re-opens each section to re-fetch under the new ws). */
+export declare function useCatalog(loaders: SourceLoaders, ws: string): UseCatalogResult;
+
+/** The lazy catalog — the per-section state record plus the `loadSection(kind)` action the explorer
+ *  fires on first expand. The host reads `sections` for rendering; passes `loadSection` to the
+ *  `<CatalogExplorer>` so its section headers can trigger their own loads. */
+declare interface UseCatalogResult {
+    sections: CatalogSections;
+    /** Fire one section's loader (deny-tolerant; absent loader ⇒ the section stays `undefined`).
+     *  Idempotent — calling it again on an already-loaded section is a no-op (the cached state persists). */
+    loadSection: (kind: CatalogSectionKind) => void;
+}
 
 /** The current dashboard workspace. Throws if read outside `DashboardCacheProvider` (a wiring bug — a
  *  read hook must never fall back to an unscoped key that would bleed across workspaces). */
@@ -974,6 +1684,17 @@ export declare function useFreeze(): boolean;
 /** Read the ambient effective cache TTL (seconds). `0` ⇒ live (omit the directive). */
 export declare function useFreshness(): number;
 
+/** Load + drive the detail for insight `id` over `client`. Re-fetches on `id` change and after an
+ *  ack/resolve lands (so the pane re-opens with the new status). `occLimit` bounds the occurrence page
+ *  (default 50). `client` is read through a ref (host-stability — see `useInsights`). */
+export declare function useInsight(client: InsightsClient, id: string, occLimit?: number): InsightDetailState;
+
+/** Drive an insights list over `client`. `initial` is the starting filter (status / severity / tags /
+ *  range); `setFilter` swaps it. Keyset paging appends on `loadMore`; the client's `subscribe` feed (if
+ *  any) refreshes the head on each raise/ack/resolve. `client` is read through a ref so an unmemoized
+ *  literal per render does not loop (the source-picker host-stability guarantee). */
+export declare function useInsights(client: InsightsClient, initial: ListQuery): InsightsState;
+
 /** The kit context. Throws outside a `KitProvider` — a kit surface with no client has no honest
  *  behaviour available: it cannot read, and rendering empty would be indistinguishable from "no data". */
 export declare function useKit(): KitContextValue;
@@ -993,6 +1714,23 @@ export declare function useKitWs(): string;
 
 /** The zone resolver — the injected replacement for the shell's `preferredZone()`. */
 export declare function useKitZone(): ZoneResolver;
+
+/** Controls a right-docked panel's width via a left-edge drag handle. */
+export declare function useResizable({ initial, min, max, step }: UseResizableOptions): Resizable;
+
+export declare interface UseResizableOptions {
+    initial: number;
+    min: number;
+    max: number;
+    /** Arrow-key step for keyboard resize (accessibility). */
+    step?: number;
+}
+
+/** Load + assemble the picker. `loaders` is the host's read seam; `ws` keys the re-load (the workspace
+ *  switch). The effect keys on `ws` ONLY and reads `loaders` through a ref kept current every render —
+ *  so an UNMEMOIZED `loaders` object (a fresh literal per render, the easy host mistake) does NOT loop.
+ *  A host that swaps to a genuinely different transport should also change `ws` (or remount). */
+export declare function useSourcePicker(loaders: SourceLoaders, ws: string): SourcePickerData;
 
 /** Read the ambient batch loader, or `null` outside a provider (an editor / a lone panel) — the caller
  *  then uses the single `viz.query` path. */
@@ -1094,6 +1832,13 @@ export declare interface VizShapeSpec {
     framesHash: string;
     transformations: unknown;
 }
+
+/** Derive a widget id from a tile — the label slug, lowercased, non-alnum → `-`. The renderer parses
+ *  the same slug from the `ext:<id>/<widget>` key, so picker and renderer agree (one slug function).
+ *  Exported so a host renderer can reuse it instead of forking a second slugger. */
+export declare function widgetIdOf(w: {
+    label: string;
+}): string;
 
 declare type Window_2 = 
 /** `yesterday` (-1) / `today` (0) / `tomorrow` (+1): that whole calendar day. */

@@ -35,7 +35,10 @@ export default defineConfig({
         "@tanstack/react-query-persist-client",
         // Externalised for the same reason React is: an extension resolves these through the shell's
         // import map, and two copies of a Radix primitive mean two portal/context identities.
+        "@radix-ui/react-collapsible",
+        "@radix-ui/react-dialog",
         "@radix-ui/react-dropdown-menu",
+        "@radix-ui/react-tooltip",
         "@radix-ui/react-slot",
         "lucide-react",
       ],

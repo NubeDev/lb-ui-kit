@@ -46,11 +46,15 @@ for (const m of text.matchAll(/(:root|:host)[^{]*\{([^}]*)\}/g)) {
 // which is exactly how a kit repaints an app it does not own. The one legitimate global is Tailwind v4's
 // `*,:before,:after,::backdrop { --tw-*: … }` property-registration block — it declares only inert
 // `--tw-` defaults that nothing reads outside a (scoped) utility.
-const SCOPE = ".dash-kit";
+// The kit's scope roots. `.dash-kit` is the kit's own; the other four came in with the packages that
+// moved here and already carried their own non-leaky scope, so they are kept verbatim rather than
+// rewritten — re-scoping every class string would risk visual regressions to buy nothing, since a
+// scoped root is a scoped root. Adding a root here is a DELIBERATE act: it widens what may match.
+const SCOPES = [".dash-kit", ".lb-panel", ".nav-rail", ".sp-root", ".ins-root"];
 for (const m of text.matchAll(/([^{}@]+)\{/g)) {
   const sel = m[1].trim();
   if (!/\.[A-Za-z]/.test(sel)) continue; // no class in this selector — element/at-rule/keyframe
-  if (sel.includes(SCOPE)) continue;
+  if (SCOPES.some((s) => sel.includes(s))) continue;
   problems.push(`unscoped class rule (would match HOST elements): ${sel.slice(0, 120)}`);
 }
 
