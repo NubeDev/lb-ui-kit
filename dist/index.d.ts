@@ -13,6 +13,10 @@ export declare interface Action {
     argsTemplate?: Record<string, unknown>;
 }
 
+/** Step an instant by `n` units in `tz` — exact for s/m/h, calendar (wall-clock-preserving, with
+ *  month-end clamping) for d/w/M/q/y. */
+export declare function addUnits(ms: number, n: number, unit: StepUnit, tz: string): number;
+
 /** The transport seam the loader dispatches through — the SAME `{tool, args}` a `WidgetBridge.call`
  *  takes. Injected so a test can stub the wire (the sanctioned `invoke`-boundary pattern) and so the
  *  provider can bind a bridge leashed to `viz.query`/`viz.query_batch`. */

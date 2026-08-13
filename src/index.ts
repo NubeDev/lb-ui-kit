@@ -35,6 +35,7 @@ export type {
 
 // ── Tier 1a: the time-range grammar + the date select ────────────────────────────────────────────
 export {
+  addUnits,
   DEFAULT_RANGE_EXPR,
   isoDayOf,
   isWindowExpr,
