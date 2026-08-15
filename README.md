@@ -42,7 +42,7 @@ is where the kit records which verb each loader rides and how its rows come back
 {
   "dependencies": {
     "@nube/ext-ui-sdk": "github:NubeDev/lb-ext-ui-sdk#ui-v0.16.0",
-    "@nube/dash-kit": "github:NubeDev/lb-ui-kit#kit-v0.7.2"
+    "@nube/dash-kit": "github:NubeDev/lb-ui-kit#kit-v0.7.3"
   }
 }
 ```
@@ -205,17 +205,26 @@ noticing: an extension page can reuse curated panels **by id** instead of re-aut
 The lens story holds — `panel.get` gates the record, and the panel's own sources re-check under the
 viewer's caps at render, so embedding a shared panel never widens access.
 
-**The kit does not draw the panel.** It owns the contract — the three modes, the fetch, the read cache
-(which the renderer needs and breaks without), and the honest `denied` / `error` / `loading` states —
-and delegates the drawing to whatever renderer the **host** registered:
+**The kit does not draw the panel.** It owns the contract — the three modes, the fetch, and the honest
+`denied` / `error` / `loading` states — and delegates the drawing to whatever renderer the **host**
+registered:
 
 ```ts
 // in the host shell, once at boot
 import { registerPanelRenderer } from "@nube/dash-kit";
 registerPanelRenderer(({ cell, ws, range, scope, refreshKey }) => (
-  <WidgetHost cell={cell} workspace={ws} range={range} scope={scope} refreshKey={refreshKey} />
+  // The renderer wraps itself in whatever context it needs. `PanelEmbed` provides none — see below.
+  <DashboardCacheProvider ws={ws}>
+    <WidgetHost cell={cell} workspace={ws} range={range} scope={scope} refreshKey={refreshKey} />
+  </DashboardCacheProvider>
 ));
 ```
+
+**A registered renderer must provide its own React context.** This is forced by the same fact that makes
+the registry a global: an extension's bundle carries its own copy of the kit, so a provider mounted by
+`PanelEmbed` lives in the *extension's* module instance while the host's renderer reads the *host's* and
+sees nothing. It fails as `useDashboardWs: no DashboardCacheProvider in tree` — thrown out of the
+renderer, with the provider plainly in the tree three elements up.
 
 That is deliberate. A kit that shipped its own panel components would ship a SECOND renderer, which
 resembles the first until the day it doesn't. Delegating means a chart on an extension page and the same

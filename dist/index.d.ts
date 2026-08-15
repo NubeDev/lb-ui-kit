@@ -1219,7 +1219,7 @@ export declare interface PageCursor {
 /** The reusable resizable side panel — ce InspectPanel look on shadcn primitives. */
 export declare function Panel({ open, onOpenChange, title, description, headerAside, footer, "aria-label": ariaLabel, initialWidth, minWidth, maxWidth, className, children, }: PanelProps): JSX_2.Element;
 
-/** Render one panel outside any grid, wrapped in the read cache its renderer requires. */
+/** Render one panel outside any grid. */
 export declare function PanelEmbed(props: PanelEmbedProps): JSX_2.Element;
 
 export declare interface PanelEmbedProps {

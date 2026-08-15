@@ -1,14 +1,14 @@
-var Dr = Object.defineProperty;
-var Pr = (e, t, r) => t in e ? Dr(e, t, { enumerable: !0, configurable: !0, writable: !0, value: r }) : e[t] = r;
-var Ke = (e, t, r) => Pr(e, typeof t != "symbol" ? t + "" : t, r);
-import { jsx as a, jsxs as b, Fragment as Or } from "react/jsx-runtime";
+var zr = Object.defineProperty;
+var Dr = (e, t, r) => t in e ? zr(e, t, { enumerable: !0, configurable: !0, writable: !0, value: r }) : e[t] = r;
+var Ke = (e, t, r) => Dr(e, typeof t != "symbol" ? t + "" : t, r);
+import { jsx as a, jsxs as b, Fragment as Pr } from "react/jsx-runtime";
 import * as z from "react";
 import { createContext as ke, useMemo as fe, useContext as le, useRef as V, useState as R, useEffect as G, useCallback as W } from "react";
-import { Calendar as Lr, CalendarRange as Fr, ChevronDown as Gr, Check as Kt, ChevronRight as qt, Table2 as jr, Inbox as Vt, Lightbulb as Xe, Hash as Wr, LineChart as Br, Database as Kr, X as Ut, RefreshCw as Ie, CheckCheck as vt, PanelLeftIcon as qr, BarChart3 as Vr, TableProperties as Ur, AlertTriangle as Hr, Lock as Yr, Loader2 as Qr } from "lucide-react";
+import { Calendar as Or, CalendarRange as Lr, ChevronDown as Fr, Check as Kt, ChevronRight as qt, Table2 as Gr, Inbox as Vt, Lightbulb as Xe, Hash as jr, LineChart as Wr, Database as Br, X as Ut, RefreshCw as Ie, CheckCheck as vt, PanelLeftIcon as Kr, BarChart3 as qr, TableProperties as Vr, AlertTriangle as Ur, Lock as Hr, Loader2 as Yr } from "lucide-react";
 import { Slot as nt } from "@radix-ui/react-slot";
 import * as pe from "@radix-ui/react-dropdown-menu";
-import { QueryClient as Zr, QueryClientProvider as Xr } from "@tanstack/react-query";
-import { persistQueryClientRestore as Jr, persistQueryClientSave as en } from "@tanstack/react-query-persist-client";
+import { QueryClient as Qr, QueryClientProvider as Zr } from "@tanstack/react-query";
+import { persistQueryClientRestore as Xr, persistQueryClientSave as Jr } from "@tanstack/react-query-persist-client";
 import * as he from "@radix-ui/react-collapsible";
 import * as j from "@radix-ui/react-dialog";
 import * as ye from "@radix-ui/react-tooltip";
@@ -20,13 +20,13 @@ class Je extends Error {
     this.name = "KitDeniedError", this.tool = r;
   }
 }
-function tn(e) {
+function en(e) {
   return e instanceof Je;
 }
 function Ga(e) {
   return e instanceof Error && e.message.startsWith("out_of_scope:");
 }
-function rn(e) {
+function tn(e) {
   if (typeof e == "function") return e;
   const t = e;
   return (r, n) => t.call(r, n);
@@ -36,7 +36,7 @@ function Y(e, t) {
   const r = e[t];
   return Array.isArray(r) ? r : [];
 }
-function nn(e, t = {}) {
+function rn(e, t = {}) {
   const r = {
     listSeries: () => e("series.list", {}).then((n) => Y(n, "series")),
     listExtensions: () => e("ext.list", {}).then((n) => Y(n, "extensions")),
@@ -61,7 +61,7 @@ function nn(e, t = {}) {
   }
   return r;
 }
-function on(e) {
+function nn(e) {
   return {
     list: (t) => e("insight.list", { ...t }).then((r) => r ?? { items: [] }),
     get: (t) => e("insight.get", { id: t }).then((r) => r ?? null),
@@ -87,11 +87,11 @@ function on(e) {
   };
 }
 function ja(e, t = {}) {
-  const r = rn(e);
+  const r = tn(e);
   return {
     call: r,
-    loaders: nn(r, t),
-    insights: on(r)
+    loaders: rn(r, t),
+    insights: nn(r)
   };
 }
 const Wa = [
@@ -114,7 +114,7 @@ const Wa = [
   // it declines it, and the embed renders an honest denial naming the verb.
   "mcp:panel.get:call"
 ];
-function sn() {
+function on() {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   } catch {
@@ -124,7 +124,7 @@ function sn() {
 const ot = ke(null);
 function Ka({ client: e, ws: t, theme: r, zone: n, children: o }) {
   const s = fe(
-    () => ({ client: e, ws: t, theme: r, zone: n ?? sn }),
+    () => ({ client: e, ws: t, theme: r, zone: n ?? on }),
     [e, t, r, n]
   );
   return /* @__PURE__ */ a(ot.Provider, { value: s, children: o });
@@ -152,7 +152,7 @@ function Ua() {
 function Ha() {
   return Pe().zone;
 }
-const an = 864e5;
+const sn = 864e5;
 function be(e, t, r) {
   e -= t <= 2 ? 1 : 0;
   const n = Math.floor((e >= 0 ? e : e - 399) / 400), o = e - n * 400, s = Math.floor((153 * (t + (t > 2 ? -3 : 9)) + 2) / 5) + r - 1, i = o * 365 + Math.floor(o / 4) - Math.floor(o / 100) + s;
@@ -169,7 +169,7 @@ function Yt(e, t) {
   const r = t === 12 ? { y: e + 1, mo: 1 } : { y: e, mo: t + 1 };
   return be(r.y, r.mo, 1) - be(e, t, 1);
 }
-function ln(e, t, r, n) {
+function an(e, t, r, n) {
   return (be(e, t, r) % 7 + (n === "sunday" ? 4 : 3) + 7) % 7;
 }
 const kt = /* @__PURE__ */ new Map();
@@ -202,7 +202,7 @@ function ge(e, t) {
   return { y: n("year"), mo: n("month"), d: n("day"), h: n("hour") % 24, mi: n("minute"), s: n("second") };
 }
 function Zt(e) {
-  return be(e.y, e.mo, e.d) * an + ((e.h * 60 + e.mi) * 60 + e.s) * 1e3;
+  return be(e.y, e.mo, e.d) * sn + ((e.h * 60 + e.mi) * 60 + e.s) * 1e3;
 }
 function Nt(e, t) {
   return Zt(ge(e, t)) - e;
@@ -223,7 +223,7 @@ const Ct = {
   w: "w",
   M: "M",
   y: "y"
-}, cn = {
+}, ln = {
   second: "s",
   minute: "m",
   hour: "h",
@@ -232,7 +232,7 @@ const Ct = {
   month: "M",
   quarter: "q",
   year: "y"
-}, dn = {
+}, cn = {
   s: "second",
   m: "minute",
   h: "hour",
@@ -240,7 +240,7 @@ const Ct = {
   w: "week",
   M: "month",
   y: "year"
-}, un = /^now(?:([+-])(\d{1,6})([smhdwMy]))?(?:\/([smhdwMy]))?$/, mn = /^(\d{4})-(\d{2})-(\d{2})$/, fn = /^\d{13}$/, hn = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?(Z|[+-]\d{2}:\d{2})?$/, pn = /^(this|last|next)-(hour|day|week|month|quarter|year)$/, bn = /^last-(\d{1,6})-(second|minute|hour|day|week|month|quarter|year)s?$/, gn = /^last-(\d{1,6})([smhdwMy])$/, Xt = "expected now±<n><unit> (units s m h d w M y, optional /<unit> snap), an ISO day or instant, 13-digit epoch ms, today/yesterday/tomorrow, this-/last-/next-<unit>, or last-<n>-<unit>s";
+}, dn = /^now(?:([+-])(\d{1,6})([smhdwMy]))?(?:\/([smhdwMy]))?$/, un = /^(\d{4})-(\d{2})-(\d{2})$/, mn = /^\d{13}$/, fn = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?(Z|[+-]\d{2}:\d{2})?$/, hn = /^(this|last|next)-(hour|day|week|month|quarter|year)$/, pn = /^last-(\d{1,6})-(second|minute|hour|day|week|month|quarter|year)s?$/, bn = /^last-(\d{1,6})([smhdwMy])$/, Xt = "expected now±<n><unit> (units s m h d w M y, optional /<unit> snap), an ISO day or instant, 13-digit epoch ms, today/yesterday/tomorrow, this-/last-/next-<unit>, or last-<n>-<unit>s";
 function Te(e) {
   return { ok: !1, error: `unrecognized range expression "${e}" — ${Xt}` };
 }
@@ -253,29 +253,29 @@ function Ae(e) {
   if (t === "today") return ue({ kind: "day", offset: 0 });
   if (t === "yesterday") return ue({ kind: "day", offset: -1 });
   if (t === "tomorrow") return ue({ kind: "day", offset: 1 });
-  const r = pn.exec(t);
+  const r = hn.exec(t);
   if (r)
     return ue({ kind: "period", rel: r[1], unit: r[2] });
-  const n = bn.exec(t);
-  if (n) return ue({ kind: "trailing", n: Number(n[1]), unit: cn[n[2]] });
-  const o = gn.exec(t);
+  const n = pn.exec(t);
+  if (n) return ue({ kind: "trailing", n: Number(n[1]), unit: ln[n[2]] });
+  const o = bn.exec(t);
   if (o) return ue({ kind: "trailing", n: Number(o[1]), unit: Ct[o[2]] });
-  const s = un.exec(t);
+  const s = dn.exec(t);
   if (s) {
     const [, d, c, u, p] = s;
     return we({
       kind: "now",
       ...d ? { offset: { sign: d === "-" ? -1 : 1, n: Number(c), unit: Ct[u] } } : {},
-      ...p ? { snap: dn[p] } : {}
+      ...p ? { snap: cn[p] } : {}
     });
   }
-  const i = mn.exec(t);
+  const i = un.exec(t);
   if (i) {
     const [d, c, u] = [Number(i[1]), Number(i[2]), Number(i[3])];
     return St(d, c, u) ? we({ kind: "isoDay", y: d, mo: c, d: u }) : Te(e);
   }
-  if (fn.test(t)) return we({ kind: "instant", ms: Number(t) });
-  const l = hn.exec(t);
+  if (mn.test(t)) return we({ kind: "instant", ms: Number(t) });
+  const l = fn.exec(t);
   if (l) {
     const [, d, c, u, p, x, g, m, f] = l;
     if (!St(Number(d), Number(c), Number(u)) || Number(p) > 23 || Number(x) > 59) return Te(e);
@@ -306,7 +306,7 @@ function ue(e) {
 function we(e) {
   return { ok: !0, expr: { type: "endpoint", endpoint: e } };
 }
-const wn = "browser";
+const gn = "browser";
 function Jt() {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -316,14 +316,14 @@ function Jt() {
 }
 function er(e, ...t) {
   for (const r of t)
-    if (r && r !== wn) return r;
+    if (r && r !== gn) return r;
   return e();
 }
 const Qa = "last-30-days";
 function Za(e, t, r = Jt) {
   return st(er(r, e, t));
 }
-function xn(e, t) {
+function wn(e, t) {
   const r = e.y * 12 + (e.mo - 1) + t, n = Math.floor(r / 12), o = (r % 12 + 12) % 12 + 1;
   return { ...e, y: n, mo: o, d: Math.min(e.d, Yt(n, o)) };
 }
@@ -344,11 +344,11 @@ function ie(e, t, r, n) {
     case "q":
     case "y": {
       const o = r === "M" ? t : r === "q" ? t * 3 : t * 12;
-      return q(xn(ge(e, n), o), n);
+      return q(wn(ge(e, n), o), n);
     }
   }
 }
-function yn(e) {
+function xn(e) {
   return {
     second: "s",
     minute: "m",
@@ -371,7 +371,7 @@ function tt(e, t, r, n) {
     case "day":
       return q({ ...o, h: 0, mi: 0, s: 0 }, r);
     case "week": {
-      const i = Ht(be(o.y, o.mo, o.d) - ln(o.y, o.mo, o.d, s));
+      const i = Ht(be(o.y, o.mo, o.d) - an(o.y, o.mo, o.d, s));
       return q({ ...o, ...i, h: 0, mi: 0, s: 0 }, r);
     }
     case "month":
@@ -398,26 +398,26 @@ function $t(e, t, r, n) {
       return q({ y: e.y, mo: e.mo, d: e.d, h: e.h, mi: e.mi, s: e.s }, r) + e.ms;
   }
 }
-function vn(e, t, r, n) {
+function yn(e, t, r, n) {
   switch (e.kind) {
     case "day": {
       const o = ie(tt(t, "day", r), e.offset, "d", r);
       return e.offset === 0 ? { fromMs: o, toMs: t } : { fromMs: o, toMs: ie(o, 1, "d", r) };
     }
     case "period": {
-      const o = tt(t, e.unit, r, n), s = yn(e.unit);
+      const o = tt(t, e.unit, r, n), s = xn(e.unit);
       return e.rel === "this" ? { fromMs: o, toMs: t } : e.rel === "last" ? { fromMs: ie(o, -1, s, r), toMs: o } : { fromMs: ie(o, 1, s, r), toMs: ie(o, 2, s, r) };
     }
     case "trailing":
       return { fromMs: ie(t, -e.n, e.unit, r), toMs: t };
   }
 }
-function kn(e, t, r, n, o) {
+function vn(e, t, r, n, o) {
   if (!e || !e.trim()) return null;
   const s = st(n), i = Ae(e);
   if (!i.ok) return null;
   if (i.expr.type === "window")
-    return t && t.trim() ? null : vn(i.expr.window, r, s, o);
+    return t && t.trim() ? null : yn(i.expr.window, r, s, o);
   const l = $t(i.expr.endpoint, r, s, o);
   let d = r;
   if (t && t.trim()) {
@@ -433,10 +433,10 @@ function Xa(e, t) {
   const s = (i) => String(i).padStart(2, "0");
   return `${o} ${s(n.h)}:${s(n.mi)}`;
 }
-function Nn(e) {
+function kn(e) {
   return e === "sunday" ? "sunday" : "monday";
 }
-const Cn = {
+const Nn = {
   s: "second",
   m: "minute",
   h: "hour",
@@ -446,26 +446,26 @@ const Cn = {
   q: "quarter",
   y: "year"
 };
-function Sn(e) {
+function Cn(e) {
   return e.charAt(0).toUpperCase() + e.slice(1);
 }
-function $n(e) {
+function Sn(e) {
   switch (e.kind) {
     case "day":
       return e.offset === 0 ? "Today" : e.offset === -1 ? "Yesterday" : "Tomorrow";
     case "period":
-      return `${Sn(e.rel)} ${e.unit}`;
+      return `${Cn(e.rel)} ${e.unit}`;
     case "trailing": {
-      const t = Cn[e.unit];
+      const t = Nn[e.unit];
       return `Last ${e.n} ${t}${e.n === 1 ? "" : "s"}`;
     }
   }
 }
 function at(e, t) {
   const r = Ae(e);
-  return r.ok && r.expr.type === "window" ? $n(r.expr.window) : t ? `${e} → ${t}` : e === "now" ? "Now" : `${e} → now`;
+  return r.ok && r.expr.type === "window" ? Sn(r.expr.window) : t ? `${e} → ${t}` : e === "now" ? "Now" : `${e} → now`;
 }
-function Tn(e, t) {
+function $n(e, t) {
   const r = /^\d{4}-\d{2}-\d{2}$/;
   if (t && r.test(e) && r.test(t)) {
     const n = (o) => {
@@ -518,36 +518,36 @@ const Tt = (e) => typeof e == "boolean" ? `${e}` : e === 0 ? "0" : e, Et = Oe, i
     ] : c;
   }, []);
   return Et(e, i, d, r == null ? void 0 : r.class, r == null ? void 0 : r.className);
-}, En = (e, t) => {
+}, Tn = (e, t) => {
   const r = new Array(e.length + t.length);
   for (let n = 0; n < e.length; n++)
     r[n] = e[n];
   for (let n = 0; n < t.length; n++)
     r[e.length + n] = t[n];
   return r;
-}, Rn = (e, t) => ({
+}, En = (e, t) => ({
   classGroupId: e,
   validator: t
 }), rr = (e = /* @__PURE__ */ new Map(), t = null, r) => ({
   nextPart: e,
   validators: t,
   classGroupId: r
-}), ze = "-", Rt = [], _n = "arbitrary..", Mn = (e) => {
-  const t = An(e), {
+}), ze = "-", Rt = [], Rn = "arbitrary..", _n = (e) => {
+  const t = In(e), {
     conflictingClassGroups: r,
     conflictingClassGroupModifiers: n
   } = e;
   return {
     getClassGroupId: (i) => {
       if (i.startsWith("[") && i.endsWith("]"))
-        return In(i);
+        return Mn(i);
       const l = i.split(ze), d = l[0] === "" && l.length > 1 ? 1 : 0;
       return nr(l, d, t);
     },
     getConflictingClassGroupIds: (i, l) => {
       if (l) {
         const d = n[i], c = r[i];
-        return d ? c ? En(c, d) : d : c || Rt;
+        return d ? c ? Tn(c, d) : d : c || Rt;
       }
       return r[i] || Rt;
     }
@@ -569,16 +569,16 @@ const Tt = (e) => typeof e == "boolean" ? `${e}` : e === 0 ? "0" : e, Et = Oe, i
     if (u.validator(l))
       return u.classGroupId;
   }
-}, In = (e) => e.slice(1, -1).indexOf(":") === -1 ? void 0 : (() => {
+}, Mn = (e) => e.slice(1, -1).indexOf(":") === -1 ? void 0 : (() => {
   const t = e.slice(1, -1), r = t.indexOf(":"), n = t.slice(0, r);
-  return n ? _n + n : void 0;
-})(), An = (e) => {
+  return n ? Rn + n : void 0;
+})(), In = (e) => {
   const {
     theme: t,
     classGroups: r
   } = e;
-  return zn(r, t);
-}, zn = (e, t) => {
+  return An(r, t);
+}, An = (e, t) => {
   const r = rr();
   for (const n in e) {
     const o = e[n];
@@ -589,28 +589,28 @@ const Tt = (e) => typeof e == "boolean" ? `${e}` : e === 0 ? "0" : e, Et = Oe, i
   const o = e.length;
   for (let s = 0; s < o; s++) {
     const i = e[s];
-    Dn(i, t, r, n);
+    zn(i, t, r, n);
   }
-}, Dn = (e, t, r, n) => {
+}, zn = (e, t, r, n) => {
   if (typeof e == "string") {
-    Pn(e, t, r);
+    Dn(e, t, r);
     return;
   }
   if (typeof e == "function") {
-    On(e, t, r, n);
+    Pn(e, t, r, n);
     return;
   }
-  Ln(e, t, r, n);
-}, Pn = (e, t, r) => {
+  On(e, t, r, n);
+}, Dn = (e, t, r) => {
   const n = e === "" ? t : or(t, e);
   n.classGroupId = r;
-}, On = (e, t, r, n) => {
-  if (Fn(e)) {
+}, Pn = (e, t, r, n) => {
+  if (Ln(e)) {
     lt(e(n), t, r, n);
     return;
   }
-  t.validators === null && (t.validators = []), t.validators.push(Rn(r, e));
-}, Ln = (e, t, r, n) => {
+  t.validators === null && (t.validators = []), t.validators.push(En(r, e));
+}, On = (e, t, r, n) => {
   const o = Object.entries(e), s = o.length;
   for (let i = 0; i < s; i++) {
     const [l, d] = o[i];
@@ -625,7 +625,7 @@ const Tt = (e) => typeof e == "boolean" ? `${e}` : e === 0 ? "0" : e, Et = Oe, i
     l || (l = rr(), r.nextPart.set(i, l)), r = l;
   }
   return r;
-}, Fn = (e) => "isThemeGetter" in e && e.isThemeGetter === !0, Gn = (e) => {
+}, Ln = (e) => "isThemeGetter" in e && e.isThemeGetter === !0, Fn = (e) => {
   if (e < 1)
     return {
       get: () => {
@@ -649,13 +649,13 @@ const Tt = (e) => typeof e == "boolean" ? `${e}` : e === 0 ? "0" : e, Et = Oe, i
       s in r ? r[s] = i : o(s, i);
     }
   };
-}, rt = "!", _t = ":", jn = [], Mt = (e, t, r, n, o) => ({
+}, rt = "!", _t = ":", Gn = [], Mt = (e, t, r, n, o) => ({
   modifiers: e,
   hasImportantModifier: t,
   baseClassName: r,
   maybePostfixModifierPosition: n,
   isExternal: o
-}), Wn = (e) => {
+}), jn = (e) => {
   const {
     prefix: t,
     experimentalParseClassName: r
@@ -692,7 +692,7 @@ const Tt = (e) => typeof e == "boolean" ? `${e}` : e === 0 ? "0" : e, Et = Oe, i
   };
   if (t) {
     const o = t + _t, s = n;
-    n = (i) => i.startsWith(o) ? s(i.slice(o.length)) : Mt(jn, !1, i, void 0, !0);
+    n = (i) => i.startsWith(o) ? s(i.slice(o.length)) : Mt(Gn, !1, i, void 0, !0);
   }
   if (r) {
     const o = n;
@@ -702,7 +702,7 @@ const Tt = (e) => typeof e == "boolean" ? `${e}` : e === 0 ? "0" : e, Et = Oe, i
     });
   }
   return n;
-}, Bn = (e) => {
+}, Wn = (e) => {
   const t = /* @__PURE__ */ new Map();
   return e.orderSensitiveModifiers.forEach((r, n) => {
     t.set(r, 1e6 + n);
@@ -715,26 +715,26 @@ const Tt = (e) => typeof e == "boolean" ? `${e}` : e === 0 ? "0" : e, Et = Oe, i
     }
     return o.length > 0 && (o.sort(), n.push(...o)), n;
   };
-}, Kn = (e) => ({
-  cache: Gn(e.cacheSize),
-  parseClassName: Wn(e),
-  sortModifiers: Bn(e),
-  postfixLookupClassGroupIds: qn(e),
-  ...Mn(e)
-}), qn = (e) => {
+}, Bn = (e) => ({
+  cache: Fn(e.cacheSize),
+  parseClassName: jn(e),
+  sortModifiers: Wn(e),
+  postfixLookupClassGroupIds: Kn(e),
+  ..._n(e)
+}), Kn = (e) => {
   const t = /* @__PURE__ */ Object.create(null), r = e.postfixLookupClassGroups;
   if (r)
     for (let n = 0; n < r.length; n++)
       t[r[n]] = !0;
   return t;
-}, Vn = /\s+/, Un = (e, t) => {
+}, qn = /\s+/, Vn = (e, t) => {
   const {
     parseClassName: r,
     getClassGroupId: n,
     getConflictingClassGroupIds: o,
     sortModifiers: s,
     postfixLookupClassGroupIds: i
-  } = t, l = [], d = e.trim().split(Vn);
+  } = t, l = [], d = e.trim().split(qn);
   let c = "";
   for (let u = d.length - 1; u >= 0; u -= 1) {
     const p = d[u], {
@@ -779,7 +779,7 @@ const Tt = (e) => typeof e == "boolean" ? `${e}` : e === 0 ? "0" : e, Et = Oe, i
     c = p + (c.length > 0 ? " " + c : c);
   }
   return c;
-}, Hn = (...e) => {
+}, Un = (...e) => {
   let t = 0, r, n, o = "";
   for (; t < e.length; )
     (r = e[t++]) && (n = sr(r)) && (o && (o += " "), o += n);
@@ -791,34 +791,34 @@ const Tt = (e) => typeof e == "boolean" ? `${e}` : e === 0 ? "0" : e, Et = Oe, i
   for (let n = 0; n < e.length; n++)
     e[n] && (t = sr(e[n])) && (r && (r += " "), r += t);
   return r;
-}, Yn = (e, ...t) => {
+}, Hn = (e, ...t) => {
   let r, n, o, s;
   const i = (d) => {
     const c = t.reduce((u, p) => p(u), e());
-    return r = Kn(c), n = r.cache.get, o = r.cache.set, s = l, l(d);
+    return r = Bn(c), n = r.cache.get, o = r.cache.set, s = l, l(d);
   }, l = (d) => {
     const c = n(d);
     if (c)
       return c;
-    const u = Un(d, r);
+    const u = Vn(d, r);
     return o(d, u), u;
   };
-  return s = i, (...d) => s(Hn(...d));
-}, Qn = [], P = (e) => {
-  const t = (r) => r[e] || Qn;
+  return s = i, (...d) => s(Un(...d));
+}, Yn = [], P = (e) => {
+  const t = (r) => r[e] || Yn;
   return t.isThemeGetter = !0, t;
-}, ar = /^\[(?:(\w[\w-]*):)?(.+)\]$/i, ir = /^\((?:(\w[\w-]*):)?(.+)\)$/i, Zn = /^\d+(?:\.\d+)?\/\d+(?:\.\d+)?$/, Xn = /^(\d+(\.\d+)?)?(xs|sm|md|lg|xl)$/, Jn = /\d+(%|px|r?em|[sdl]?v([hwib]|min|max)|pt|pc|in|cm|mm|cap|ch|ex|r?lh|cq(w|h|i|b|min|max))|\b(calc|min|max|clamp)\(.+\)|^0$/, eo = /^(rgba?|hsla?|hwb|(ok)?(lab|lch)|color-mix)\(.+\)$/, to = /^(inset_)?-?((\d+)?\.?(\d+)[a-z]+|0)_-?((\d+)?\.?(\d+)[a-z]+|0)/, ro = /^(url|image|image-set|cross-fade|element|(repeating-)?(linear|radial|conic)-gradient)\(.+\)$/, ee = (e) => Zn.test(e), T = (e) => !!e && !Number.isNaN(Number(e)), Q = (e) => !!e && Number.isInteger(Number(e)), qe = (e) => e.endsWith("%") && T(e.slice(0, -1)), X = (e) => Xn.test(e), lr = () => !0, no = (e) => (
+}, ar = /^\[(?:(\w[\w-]*):)?(.+)\]$/i, ir = /^\((?:(\w[\w-]*):)?(.+)\)$/i, Qn = /^\d+(?:\.\d+)?\/\d+(?:\.\d+)?$/, Zn = /^(\d+(\.\d+)?)?(xs|sm|md|lg|xl)$/, Xn = /\d+(%|px|r?em|[sdl]?v([hwib]|min|max)|pt|pc|in|cm|mm|cap|ch|ex|r?lh|cq(w|h|i|b|min|max))|\b(calc|min|max|clamp)\(.+\)|^0$/, Jn = /^(rgba?|hsla?|hwb|(ok)?(lab|lch)|color-mix)\(.+\)$/, eo = /^(inset_)?-?((\d+)?\.?(\d+)[a-z]+|0)_-?((\d+)?\.?(\d+)[a-z]+|0)/, to = /^(url|image|image-set|cross-fade|element|(repeating-)?(linear|radial|conic)-gradient)\(.+\)$/, ee = (e) => Qn.test(e), T = (e) => !!e && !Number.isNaN(Number(e)), Q = (e) => !!e && Number.isInteger(Number(e)), qe = (e) => e.endsWith("%") && T(e.slice(0, -1)), X = (e) => Zn.test(e), lr = () => !0, ro = (e) => (
   // `colorFunctionRegex` check is necessary because color functions can have percentages in them which which would be incorrectly classified as lengths.
   // For example, `hsl(0 0% 0%)` would be classified as a length without this check.
   // I could also use lookbehind assertion in `lengthUnitRegex` but that isn't supported widely enough.
-  Jn.test(e) && !eo.test(e)
-), ct = () => !1, oo = (e) => to.test(e), so = (e) => ro.test(e), ao = (e) => !w(e) && !y(e), io = (e) => e.startsWith("@container") && (e[10] === "/" && e[11] !== void 0 || e[11] === "s" && e[16] !== void 0 && e.startsWith("-size/", 10) || e[11] === "n" && e[18] !== void 0 && e.startsWith("-normal/", 10)), lo = (e) => re(e, ur, ct), w = (e) => ar.test(e), se = (e) => re(e, mr, no), It = (e) => re(e, go, T), co = (e) => re(e, hr, lr), uo = (e) => re(e, fr, ct), At = (e) => re(e, cr, ct), mo = (e) => re(e, dr, so), Ee = (e) => re(e, pr, oo), y = (e) => ir.test(e), xe = (e) => ce(e, mr), fo = (e) => ce(e, fr), zt = (e) => ce(e, cr), ho = (e) => ce(e, ur), po = (e) => ce(e, dr), Re = (e) => ce(e, pr, !0), bo = (e) => ce(e, hr, !0), re = (e, t, r) => {
+  Xn.test(e) && !Jn.test(e)
+), ct = () => !1, no = (e) => eo.test(e), oo = (e) => to.test(e), so = (e) => !w(e) && !y(e), ao = (e) => e.startsWith("@container") && (e[10] === "/" && e[11] !== void 0 || e[11] === "s" && e[16] !== void 0 && e.startsWith("-size/", 10) || e[11] === "n" && e[18] !== void 0 && e.startsWith("-normal/", 10)), io = (e) => re(e, ur, ct), w = (e) => ar.test(e), se = (e) => re(e, mr, ro), It = (e) => re(e, bo, T), lo = (e) => re(e, hr, lr), co = (e) => re(e, fr, ct), At = (e) => re(e, cr, ct), uo = (e) => re(e, dr, oo), Ee = (e) => re(e, pr, no), y = (e) => ir.test(e), xe = (e) => ce(e, mr), mo = (e) => ce(e, fr), zt = (e) => ce(e, cr), fo = (e) => ce(e, ur), ho = (e) => ce(e, dr), Re = (e) => ce(e, pr, !0), po = (e) => ce(e, hr, !0), re = (e, t, r) => {
   const n = ar.exec(e);
   return n ? n[1] ? t(n[1]) : r(n[2]) : !1;
 }, ce = (e, t, r = !1) => {
   const n = ir.exec(e);
   return n ? n[1] ? t(n[1]) : r : !1;
-}, cr = (e) => e === "position" || e === "percentage", dr = (e) => e === "image" || e === "url", ur = (e) => e === "length" || e === "size" || e === "bg-size", mr = (e) => e === "length", go = (e) => e === "number", fr = (e) => e === "family-name", hr = (e) => e === "number" || e === "weight", pr = (e) => e === "shadow", wo = () => {
+}, cr = (e) => e === "position" || e === "percentage", dr = (e) => e === "image" || e === "url", ur = (e) => e === "length" || e === "size" || e === "bg-size", mr = (e) => e === "length", bo = (e) => e === "number", fr = (e) => e === "family-name", hr = (e) => e === "number" || e === "weight", pr = (e) => e === "shadow", go = () => {
   const e = P("color"), t = P("font"), r = P("text"), n = P("font-weight"), o = P("tracking"), s = P("leading"), i = P("breakpoint"), l = P("container"), d = P("spacing"), c = P("radius"), u = P("shadow"), p = P("inset-shadow"), x = P("text-shadow"), g = P("drop-shadow"), m = P("blur"), f = P("perspective"), v = P("aspect"), C = P("ease"), N = P("animate"), _ = () => ["auto", "avoid", "all", "avoid-page", "page", "left", "right", "column"], S = () => [
     "center",
     "top",
@@ -843,7 +843,7 @@ const Tt = (e) => typeof e == "boolean" ? `${e}` : e === 0 ? "0" : e, Et = Oe, i
     position: [y, w]
   }], gt = () => ["no-repeat", {
     repeat: ["", "x", "y", "space", "round"]
-  }], wt = () => ["auto", "cover", "contain", ho, lo, {
+  }], wt = () => ["auto", "cover", "contain", fo, io, {
     size: [y, w]
   }], We = () => [qe, xe, se], L = () => [
     // Deprecated since Tailwind CSS v4.0.0
@@ -872,7 +872,7 @@ const Tt = (e) => typeof e == "boolean" ? `${e}` : e === 0 ? "0" : e, Et = Oe, i
       container: [X],
       "drop-shadow": [X],
       ease: ["in", "out", "in-out"],
-      font: [ao],
+      font: [so],
       "font-weight": ["thin", "extralight", "light", "normal", "medium", "semibold", "bold", "extrabold", "black"],
       "inset-shadow": [X],
       leading: ["none", "tight", "snug", "normal", "relaxed", "loose"],
@@ -912,7 +912,7 @@ const Tt = (e) => typeof e == "boolean" ? `${e}` : e === 0 ? "0" : e, Et = Oe, i
        * Container Name
        * @see https://tailwindcss.com/docs/responsive-design#named-containers
        */
-      "container-named": [io],
+      "container-named": [ao],
       /**
        * Columns
        * @see https://tailwindcss.com/docs/columns
@@ -1678,7 +1678,7 @@ const Tt = (e) => typeof e == "boolean" ? `${e}` : e === 0 ? "0" : e, Et = Oe, i
        * @see https://tailwindcss.com/docs/font-weight
        */
       "font-weight": [{
-        font: [n, bo, co]
+        font: [n, po, lo]
       }],
       /**
        * Font Stretch
@@ -1692,7 +1692,7 @@ const Tt = (e) => typeof e == "boolean" ? `${e}` : e === 0 ? "0" : e, Et = Oe, i
        * @see https://tailwindcss.com/docs/font-family
        */
       "font-family": [{
-        font: [fo, uo, t]
+        font: [mo, co, t]
       }],
       /**
        * Font Feature Settings
@@ -1961,7 +1961,7 @@ const Tt = (e) => typeof e == "boolean" ? `${e}` : e === 0 ? "0" : e, Et = Oe, i
           }, Q, y, w],
           radial: ["", y, w],
           conic: [Q, y, w]
-        }, po, mo]
+        }, ho, uo]
       }],
       /**
        * Background Color
@@ -3503,11 +3503,11 @@ const Tt = (e) => typeof e == "boolean" ? `${e}` : e === 0 ? "0" : e, Et = Oe, i
     postfixLookupClassGroups: ["container-type"],
     orderSensitiveModifiers: ["*", "**", "after", "backdrop", "before", "details-content", "file", "first-letter", "first-line", "marker", "placeholder", "selection"]
   };
-}, dt = /* @__PURE__ */ Yn(wo);
+}, dt = /* @__PURE__ */ Hn(go);
 function B(...e) {
   return dt(Oe(e));
 }
-const xo = it(
+const wo = it(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/25 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
@@ -3532,15 +3532,15 @@ const xo = it(
     }
   }
 ), _e = z.forwardRef(function({ className: t, variant: r, size: n, asChild: o = !1, ...s }, i) {
-  return /* @__PURE__ */ a(o ? nt : "button", { ref: i, className: B(xo({ variant: r, size: n, className: t })), ...s });
+  return /* @__PURE__ */ a(o ? nt : "button", { ref: i, className: B(wo({ variant: r, size: n, className: t })), ...s });
 });
-function yo({ ...e }) {
+function xo({ ...e }) {
   return /* @__PURE__ */ a(pe.Root, { "data-slot": "dropdown-menu", ...e });
 }
-function vo({ ...e }) {
+function yo({ ...e }) {
   return /* @__PURE__ */ a(pe.Trigger, { "data-slot": "dropdown-menu-trigger", ...e });
 }
-function ko({
+function vo({
   className: e,
   sideOffset: t = 4,
   ...r
@@ -3558,7 +3558,7 @@ function ko({
     }
   ) });
 }
-function No({
+function ko({
   className: e,
   inset: t,
   ...r
@@ -3603,7 +3603,7 @@ const br = z.forwardRef(
 );
 br.displayName = "Input";
 const gr = { eu: "/", iso: "-", usa: "/" };
-function Co(e) {
+function No(e) {
   const t = gr[e];
   return e === "usa" ? `MM${t}DD${t}YYYY` : e === "iso" ? `YYYY${t}MM${t}DD` : `DD${t}MM${t}YYYY`;
 }
@@ -3622,7 +3622,7 @@ function Ja(e, t) {
   return /^\d{4}-\d{2}-\d{2}$/.test(i) ? i : "";
 }
 function Ot({ value: e, onChange: t, dateStyle: r, className: n, ...o }) {
-  const s = V(null), i = r ?? "eu", l = Pt(e, i) || Co(i), d = !Pt(e, i);
+  const s = V(null), i = r ?? "eu", l = Pt(e, i) || No(i), d = !Pt(e, i);
   return /* @__PURE__ */ b(
     "div",
     {
@@ -3639,7 +3639,7 @@ function Ot({ value: e, onChange: t, dateStyle: r, className: n, ...o }) {
             children: l
           }
         ),
-        /* @__PURE__ */ a(Lr, { "aria-hidden": !0, size: 13, className: "pointer-events-none absolute right-2 text-muted" }),
+        /* @__PURE__ */ a(Or, { "aria-hidden": !0, size: 13, className: "pointer-events-none absolute right-2 text-muted" }),
         /* @__PURE__ */ a(
           "input",
           {
@@ -3736,7 +3736,7 @@ function ti({
   weekStart: i,
   onUserApply: l
 }) {
-  const [d, c] = R(!1), u = De(), p = er((u == null ? void 0 : u.zone) ?? Jt, n), x = Nn(i), g = Ve.test(e) && t ? "" : e, [m, f] = R(g), v = fe(
+  const [d, c] = R(!1), u = De(), p = er((u == null ? void 0 : u.zone) ?? Jt, n), x = kn(i), g = Ve.test(e) && t ? "" : e, [m, f] = R(g), v = fe(
     () => Ve.test(e) && t && Ve.test(t) ? { from: e, to: t } : { from: "", to: "" },
     [e, t]
   ), [C, N] = R(v);
@@ -3746,7 +3746,7 @@ function ti({
   const _ = fe(() => Date.now(), [d]), S = fe(() => {
     const h = m.trim();
     if (!h) return null;
-    const I = kn(h, void 0, _, p, x);
+    const I = vn(h, void 0, _, p, x);
     return I ? {
       text: `${h} → ${et(I.fromMs, p)} → ${et(I.toMs, p)}`
     } : {
@@ -3755,8 +3755,8 @@ function ti({
   }, [m, _, p]), $ = (h) => {
     l == null || l(), r(h), c(!1);
   }, M = C.from !== e || C.to !== t, D = !!C.from && !!C.to && C.from > C.to;
-  return /* @__PURE__ */ b(yo, { open: d, onOpenChange: c, children: [
-    /* @__PURE__ */ a(vo, { asChild: !0, children: /* @__PURE__ */ b(
+  return /* @__PURE__ */ b(xo, { open: d, onOpenChange: c, children: [
+    /* @__PURE__ */ a(yo, { asChild: !0, children: /* @__PURE__ */ b(
       _e,
       {
         variant: "outline",
@@ -3767,14 +3767,14 @@ function ti({
         ),
         title: "Change the dashboard time range",
         children: [
-          /* @__PURE__ */ a(Fr, { size: 13, className: "text-muted" }),
-          /* @__PURE__ */ a("span", { className: "max-w-[13rem] truncate", children: o ? Tn(e, t) : at(e, t) }),
-          /* @__PURE__ */ a(Gr, { size: 13, className: "text-muted" })
+          /* @__PURE__ */ a(Lr, { size: 13, className: "text-muted" }),
+          /* @__PURE__ */ a("span", { className: "max-w-[13rem] truncate", children: o ? $n(e, t) : at(e, t) }),
+          /* @__PURE__ */ a(Fr, { size: 13, className: "text-muted" })
         ]
       }
     ) }),
     /* @__PURE__ */ b(
-      ko,
+      vo,
       {
         align: "end",
         className: B(
@@ -3785,7 +3785,7 @@ function ti({
           o ? "w-[calc(100vw-2rem)]" : "w-[42rem]"
         ),
         children: [
-          /* @__PURE__ */ a(No, { className: "px-3 pt-2.5 text-[0.7rem] uppercase tracking-wide text-muted", children: "Quick ranges" }),
+          /* @__PURE__ */ a(ko, { className: "px-3 pt-2.5 text-[0.7rem] uppercase tracking-wide text-muted", children: "Quick ranges" }),
           /* @__PURE__ */ a("div", { className: "px-1.5 pb-2", children: xr.map((h) => /* @__PURE__ */ b("div", { className: "mb-1 last:mb-0", children: [
             /* @__PURE__ */ b("div", { className: "flex items-baseline gap-1.5 px-1 pb-0.5 pt-1", children: [
               /* @__PURE__ */ a("span", { className: "text-[0.7rem] font-medium uppercase tracking-wide text-muted", children: h.label }),
@@ -3926,8 +3926,8 @@ function ti({
   ] });
 }
 const yr = 3e4;
-function So() {
-  return new Zr({
+function Co() {
+  return new Qr({
     defaultOptions: {
       queries: {
         // A read either resolves or honestly denies — never retry it into a fabricated success (§9).
@@ -3946,7 +3946,7 @@ function Le(e) {
     e.oncomplete = e.onsuccess = () => t(e.result), e.onabort = e.onerror = () => r(e.error);
   });
 }
-function $o(e, t) {
+function So(e, t) {
   let r;
   const n = () => {
     if (r)
@@ -3962,56 +3962,56 @@ function $o(e, t) {
 }
 let Ue;
 function ut() {
-  return Ue || (Ue = $o("keyval-store", "keyval")), Ue;
+  return Ue || (Ue = So("keyval-store", "keyval")), Ue;
 }
-function To(e, t = ut()) {
+function $o(e, t = ut()) {
   return t("readonly", (r) => Le(r.get(e)));
 }
-function Eo(e, t, r = ut()) {
+function To(e, t, r = ut()) {
   return r("readwrite", (n) => (n.put(t, e), Le(n.transaction)));
 }
-function Ro(e, t = ut()) {
+function Eo(e, t = ut()) {
   return t("readwrite", (r) => (r.delete(e), Le(r.transaction)));
 }
-const vr = "v1", _o = 7 * 24 * 60 * 6e4, Mo = "quick-";
-function Io(e) {
+const vr = "v1", Ro = 7 * 24 * 60 * 6e4, _o = "quick-";
+function Mo(e) {
   return `lb.quick-cache.${vr}.${e}`;
 }
-function Ao(e) {
-  const t = Io(e);
+function Io(e) {
+  const t = Mo(e);
   return {
-    persistClient: (r) => Eo(t, r).catch(() => {
+    persistClient: (r) => To(t, r).catch(() => {
     }),
-    restoreClient: () => To(t).catch(() => {
+    restoreClient: () => $o(t).catch(() => {
     }),
-    removeClient: () => Ro(t).catch(() => {
+    removeClient: () => Eo(t).catch(() => {
     })
   };
 }
-const zo = 250;
-function Do(e, t) {
+const Ao = 250;
+function zo(e, t) {
   const [r, n] = t.queryKey;
-  return typeof r == "string" && r.startsWith(Mo) && n === e && t.state.status === "success";
+  return typeof r == "string" && r.startsWith(_o) && n === e && t.state.status === "success";
 }
-function Po(e, t) {
+function Do(e, t) {
   if (!t) return () => {
   };
   const r = {
     queryClient: e,
-    persister: Ao(t),
-    maxAge: _o,
+    persister: Io(t),
+    maxAge: Ro,
     // The buster is BELT AND BRACES with the versioned storage key: the key stops a stale store from
     // being found at all, this stops one that somehow was.
     buster: vr,
-    dehydrateOptions: { shouldDehydrateQuery: (l) => Do(t, l) }
+    dehydrateOptions: { shouldDehydrateQuery: (l) => zo(t, l) }
   };
   let n = !1, o = null, s = null;
   const i = () => {
     n || o || (o = setTimeout(() => {
-      o = null, n || en(r);
-    }, zo));
+      o = null, n || Jr(r);
+    }, Ao));
   };
-  return Jr(r).catch(() => {
+  return Xr(r).catch(() => {
   }).then(() => {
     n || (i(), s = e.getQueryCache().subscribe(i));
   }), () => {
@@ -4027,9 +4027,9 @@ function ri() {
 function ni() {
   return le(mt);
 }
-function kr({ ws: e, children: t }) {
-  const [r] = R(So);
-  return G(() => Po(r, e), [r, e]), /* @__PURE__ */ a(mt.Provider, { value: e, children: /* @__PURE__ */ a(Xr, { client: r, children: t }) });
+function Po({ ws: e, children: t }) {
+  const [r] = R(Co);
+  return G(() => Do(r, e), [r, e]), /* @__PURE__ */ a(mt.Provider, { value: e, children: /* @__PURE__ */ a(Zr, { client: r, children: t }) });
 }
 const He = "[A-Za-z_][\\w.]*", Lt = new RegExp(
   // ${name} or ${name:format}
@@ -4073,7 +4073,7 @@ function Wo(e) {
   }
   return new Set(Go(t).filter(Fo));
 }
-function Nr(e, t) {
+function kr(e, t) {
   if (!t || typeof t != "object" || Array.isArray(t)) return t;
   const { builtins: r, ...n } = t;
   if (!r || typeof r != "object" || Array.isArray(r))
@@ -4102,14 +4102,14 @@ function si(e, t) {
   return [
     "viz.query",
     e,
-    ve({ ...t, scope: Nr(t, t.scope) })
+    ve({ ...t, scope: kr(t, t.scope) })
   ];
 }
 function ai(e, t) {
   return [
     "viz.fetch",
     e,
-    ve({ ...t, scope: Nr(t, t.scope) })
+    ve({ ...t, scope: kr(t, t.scope) })
   ];
 }
 function ii(e, t) {
@@ -4145,7 +4145,7 @@ function mi({
   return typeof e == "number" && e > 0 ? Math.max(1, Math.round(e / 1e3)) : t === 0 ? 0 : typeof t == "number" && t > 0 ? Math.floor(t) : qo;
 }
 function fi({ ws: e, children: t }) {
-  return /* @__PURE__ */ a(kr, { ws: e, children: t });
+  return /* @__PURE__ */ a(Po, { ws: e, children: t });
 }
 function hi(e, t) {
   const [r, n] = R(e);
@@ -4154,13 +4154,13 @@ function hi(e, t) {
     return () => clearTimeout(o);
   }, [e, t]), r;
 }
-const Cr = ke(!1), pi = Cr.Provider;
+const Nr = ke(!1), pi = Nr.Provider;
 function bi() {
-  return le(Cr);
+  return le(Nr);
 }
-const Sr = ke(0), gi = Sr.Provider;
+const Cr = ke(0), gi = Cr.Provider;
 function wi() {
-  return le(Sr);
+  return le(Cr);
 }
 const Gt = 64, Vo = "viz.query_batch", Uo = "viz.query";
 function jt(e, t = {}) {
@@ -4234,9 +4234,9 @@ function Yo(e) {
     t
   );
 }
-const $r = ke(null);
+const Sr = ke(null);
 function xi() {
-  return le($r);
+  return le(Sr);
 }
 function yi({ call: e, children: t }) {
   const r = De(), n = fe(() => {
@@ -4248,7 +4248,7 @@ function yi({ call: e, children: t }) {
     const o = r.client;
     return jt((s, i) => o.call(s, i));
   }, [e, r]);
-  return /* @__PURE__ */ a($r.Provider, { value: n, children: t });
+  return /* @__PURE__ */ a(Sr.Provider, { value: n, children: t });
 }
 function Qo(e) {
   return e.label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -4395,10 +4395,10 @@ function ls(e) {
     is()
   ];
 }
-function Tr(e) {
+function $r(e) {
   return { id: e.id, source: e.source, action: e.action, viewKey: e.viewKey };
 }
-const Er = {
+const Tr = {
   datasources: "listDatasources",
   schema: "readSchema",
   series: "listSeries",
@@ -4410,7 +4410,7 @@ const Er = {
   rules: "listRules",
   flowSummaries: "listFlows",
   flowDescriptors: "listFlowNodes"
-}, cs = Object.keys(Er);
+}, cs = Object.keys(Tr);
 function ds(e) {
   return e instanceof Error ? e.message : String(e);
 }
@@ -4420,13 +4420,13 @@ async function us(e, t) {
   };
   return await Promise.all(
     cs.map(async (o) => {
-      const s = await Rr(e, o);
+      const s = await Er(e, o);
       s && n(o, s);
     })
   ), r;
 }
-async function Rr(e, t) {
-  const r = e[Er[t]];
+async function Er(e, t) {
+  const r = e[Tr[t]];
   if (r)
     try {
       return { status: "ready", data: await r() };
@@ -4581,14 +4581,14 @@ function Ti(e, t) {
       const d = l[i];
       if (d && d.status !== "idle") return l;
       const c = { ...l, [i]: { status: "loading" } };
-      return Rr(o.current, i).then((u) => {
+      return Er(o.current, i).then((u) => {
         u && n((p) => ({ ...p, [i]: u }));
       }), c;
     });
   }, []);
   return { sections: r, loadSection: s };
 }
-const _r = [
+const Rr = [
   { group: "series", label: "Series" },
   { group: "live", label: "Live (Zenoh)" },
   { group: "sql", label: "Direct SurrealDB" },
@@ -4610,13 +4610,13 @@ function Ri({
   value: t = "",
   onSelect: r,
   loading: n = !1,
-  groups: o = _r,
+  groups: o = Rr,
   "aria-label": s = "source",
   className: i
 }) {
   const l = (d) => {
     const c = e.find((u) => u.id === d) ?? null;
-    r(c ? Tr(c) : null);
+    r(c ? $r(c) : null);
   };
   return /* @__PURE__ */ a("label", { className: `sp-root${i ? ` ${i}` : ""}`, children: /* @__PURE__ */ b(
     "select",
@@ -4646,7 +4646,7 @@ function _i({
   onSelect: r,
   onSelectEntry: n,
   loading: o = !1,
-  groups: s = _r,
+  groups: s = Rr,
   "aria-label": i = "source",
   className: l,
   placeholder: d = "Search sources…",
@@ -4660,7 +4660,7 @@ function _i({
       ).forEach((H, Z) => M.push({ entry: H, groupLabel: h, firstOfGroup: Z === 0 }));
     return M;
   }, [e, s, u]), _ = ($) => {
-    r($ ? Tr($) : null), n == null || n($), g(!1), p("");
+    r($ ? $r($) : null), n == null || n($), g(!1), p("");
   }, S = ($) => {
     $.key === "ArrowDown" ? ($.preventDefault(), g(!0), f((M) => Math.min(M + 1, N.length - 1))) : $.key === "ArrowUp" ? ($.preventDefault(), f((M) => Math.max(M - 1, 0))) : $.key === "Enter" ? ($.preventDefault(), x && N[m] && _(N[m].entry)) : $.key === "Escape" && g(!1);
   };
@@ -4767,7 +4767,7 @@ function ks({
           className: "sp-catalog-tree-table",
           onClick: () => r({ kind: "table", id: `table:${e}`, table: e }),
           children: [
-            /* @__PURE__ */ a(jr, { "aria-hidden": "true", className: "sp-catalog-icon", size: 12 }),
+            /* @__PURE__ */ a(Gr, { "aria-hidden": "true", className: "sp-catalog-icon", size: 12 }),
             /* @__PURE__ */ a("span", { className: "sp-catalog-tree-table-name", children: e })
           ]
         }
@@ -4825,7 +4825,7 @@ function Ns(e, t, r) {
           }),
           children: [
             /* @__PURE__ */ b("span", { className: "sp-catalog-row-label", children: [
-              /* @__PURE__ */ a(Kr, { "aria-hidden": "true", className: "sp-catalog-icon", size: 12 }),
+              /* @__PURE__ */ a(Br, { "aria-hidden": "true", className: "sp-catalog-icon", size: 12 }),
               o.name
             ] }),
             /* @__PURE__ */ a("span", { className: "sp-catalog-row-sub", children: o.endpoint ? `${o.kind} · ${o.endpoint}` : o.kind })
@@ -4847,7 +4847,7 @@ function Ns(e, t, r) {
           className: "sp-catalog-row sp-catalog-row-series",
           onClick: () => r({ kind: "series", id: `series:${o}`, name: o }),
           children: [
-            /* @__PURE__ */ a(Br, { "aria-hidden": "true", className: "sp-catalog-icon", size: 12 }),
+            /* @__PURE__ */ a(Wr, { "aria-hidden": "true", className: "sp-catalog-icon", size: 12 }),
             o
           ]
         }
@@ -4865,7 +4865,7 @@ function Ns(e, t, r) {
             className: "sp-catalog-row sp-catalog-row-channel",
             onClick: () => r(s),
             children: [
-              /* @__PURE__ */ a(Wr, { "aria-hidden": "true", className: "sp-catalog-icon", size: 12 }),
+              /* @__PURE__ */ a(jr, { "aria-hidden": "true", className: "sp-catalog-icon", size: 12 }),
               o.id
             ]
           }
@@ -5071,7 +5071,7 @@ function Is({
   actions: s,
   now: i
 }) {
-  const l = e.severity === "critical" ? "is-critical" : e.severity === "warning" ? "is-warning" : "is-info", d = /* @__PURE__ */ b(Or, { children: [
+  const l = e.severity === "critical" ? "is-critical" : e.severity === "warning" ? "is-warning" : "is-info", d = /* @__PURE__ */ b(Pr, { children: [
     /* @__PURE__ */ a("span", { className: `ins-dot ${l}`, role: "img", "aria-label": `severity: ${e.severity}` }),
     /* @__PURE__ */ b("span", { className: "ins-row-main", children: [
       /* @__PURE__ */ a("span", { className: "ins-row-title", children: e.title }),
@@ -5139,7 +5139,7 @@ function As({
   ] });
 }
 const zs = { limit: 20 };
-function Mr({
+function _r({
   client: e,
   filter: t = zs,
   title: r = "Insights",
@@ -5216,10 +5216,10 @@ function Mr({
   ] });
 }
 function Di(e) {
-  return /* @__PURE__ */ a(Mr, { ...e, interactive: !1 });
+  return /* @__PURE__ */ a(_r, { ...e, interactive: !1 });
 }
 function Pi(e) {
-  return /* @__PURE__ */ a(Mr, { ...e, interactive: !0 });
+  return /* @__PURE__ */ a(_r, { ...e, interactive: !0 });
 }
 function Oi(e) {
   const t = [...e];
@@ -5422,7 +5422,7 @@ function Wi({ k: e, v: t, keyWidth: r = 80, className: n }) {
     /* @__PURE__ */ a("span", { className: "min-w-0 break-words text-lbp-fg", children: t })
   ] });
 }
-function Ir(e) {
+function Mr(e) {
   const t = [], r = /* @__PURE__ */ new Map();
   for (const n of e)
     r.has(n.group) || (r.set(n.group, []), t.push(n.group)), r.get(n.group).push(n);
@@ -5543,9 +5543,9 @@ function ra({
     }
   ) });
 }
-const na = "nav_rail_state", oa = 60 * 60 * 24 * 7, sa = "16rem", aa = "18rem", ia = "3.5rem", la = "b", Ar = z.createContext(null);
+const na = "nav_rail_state", oa = 60 * 60 * 24 * 7, sa = "16rem", aa = "18rem", ia = "3.5rem", la = "b", Ir = z.createContext(null);
 function J() {
-  const e = z.useContext(Ar);
+  const e = z.useContext(Ir);
   if (!e)
     throw new Error("useSidebar must be used within a SidebarProvider.");
   return e;
@@ -5584,7 +5584,7 @@ function ca({
     }),
     [f, x, g, l, d, m]
   );
-  return /* @__PURE__ */ a(Ar.Provider, { value: v, children: /* @__PURE__ */ a(Js, { delayDuration: 0, children: /* @__PURE__ */ a(
+  return /* @__PURE__ */ a(Ir.Provider, { value: v, children: /* @__PURE__ */ a(Js, { delayDuration: 0, children: /* @__PURE__ */ a(
     "div",
     {
       "data-slot": "sidebar-wrapper",
@@ -5700,7 +5700,7 @@ function ua({
       },
       ...r,
       children: [
-        /* @__PURE__ */ a(qr, { className: "h-4 w-4" }),
+        /* @__PURE__ */ a(Kr, { className: "h-4 w-4" }),
         /* @__PURE__ */ a("span", { className: "sr-only", children: "Toggle Sidebar" })
       ]
     }
@@ -5860,7 +5860,7 @@ function Bi({
   defaultCollapsed: s = !1,
   className: i
 }) {
-  const l = Ir(e);
+  const l = Mr(e);
   return /* @__PURE__ */ a(ca, { defaultOpen: !s, className: `nav-rail ${i ?? ""}`, children: /* @__PURE__ */ b(da, { collapsible: "icon", variant: "sidebar", children: [
     /* @__PURE__ */ b(fa, { children: [
       n,
@@ -5898,7 +5898,7 @@ function Ki({
   className: o,
   "aria-label": s = "section navigation"
 }) {
-  const i = Ir(e);
+  const i = Mr(e);
   return /* @__PURE__ */ a(
     "nav",
     {
@@ -5949,12 +5949,12 @@ const qi = [
   "TitleComponent",
   "CanvasRenderer"
 ];
-let zr = () => import("./echartsDefault-CWN45a00.js").then((e) => e.echarts);
+let Ar = () => import("./echartsDefault-CWN45a00.js").then((e) => e.echarts);
 function Vi(e) {
-  zr = e;
+  Ar = e;
 }
 function Na() {
-  return zr();
+  return Ar();
 }
 const Ca = [
   "--chart-1",
@@ -6080,7 +6080,7 @@ function Qi({ option: e, ariaLabel: t, summary: r, className: n, onReady: o, bar
 }
 const Ta = {
   loading: {
-    icon: Qr,
+    icon: Yr,
     title: "Loading…",
     wrap: "border-border/60",
     chip: "border-border/60 bg-muted-bg/40 text-muted",
@@ -6089,14 +6089,14 @@ const Ta = {
     spin: !0
   },
   denied: {
-    icon: Yr,
+    icon: Hr,
     title: "No access to this source",
     detail: "This view needs a capability you have not been granted.",
     wrap: "border-warning/30 bg-warning/[0.03]",
     chip: "border-warning/30 bg-warning/10 text-warning"
   },
   error: {
-    icon: Hr,
+    icon: Ur,
     title: "This didn't load",
     wrap: "border-destructive/30 bg-destructive/[0.03]",
     chip: "border-destructive/30 bg-destructive/10 text-destructive"
@@ -6109,13 +6109,13 @@ const Ta = {
     chip: "border-border/60 bg-muted-bg/40 text-muted"
   },
   "table-only": {
-    icon: Ur,
+    icon: Vr,
     title: "Nothing numeric to plot",
     detail: "Pick a numeric field for the y axis, or view the result as a table.",
     wrap: "border-border/60",
     chip: "border-border/60 bg-muted-bg/40 text-muted"
   }
-}, Zi = Vr;
+}, Zi = qr;
 function Qe({ tone: e, title: t, detail: r, action: n, className: o }) {
   const s = Ta[e], i = s.icon, l = r === null ? void 0 : r ?? s.detail;
   return /* @__PURE__ */ b(
@@ -6226,11 +6226,7 @@ function Ze(e, t, r) {
 }
 function nl(e) {
   const t = De(), r = e.ws ?? (t == null ? void 0 : t.ws) ?? "";
-  return (
-    // Keyed on `ws`: a workspace switch mints a fresh cache rather than serving another workspace's
-    // frames. (The workspace WALL is still the host's — this is de-dup, not security.)
-    /* @__PURE__ */ a(kr, { ws: r, children: /* @__PURE__ */ a(Ia, { ...e, ws: r }) }, r)
-  );
+  return /* @__PURE__ */ a(Ia, { ...e, ws: r }, r);
 }
 function Ia({
   ws: e,
@@ -6258,7 +6254,7 @@ function Ia({
       const N = C;
       x(Ze(c, _a((N == null ? void 0 : N.spec) ?? {})));
     }).catch((C) => {
-      v && m(tn(C) ? "denied" : "error");
+      v && m(en(C) ? "denied" : "error");
     }), () => {
       v = !1;
     };
@@ -6285,7 +6281,7 @@ function Ia({
   );
 }
 export {
-  wn as BROWSER_TZ,
+  gn as BROWSER_TZ,
   Ei as BUILDER_SOURCE_GROUPS,
   Lo as BUILTIN_PREFIX,
   fs as CATALOG_SECTION_SPECS,
@@ -6300,7 +6296,7 @@ export {
   Wa as DASH_KIT_READ_SCOPE,
   Qa as DEFAULT_RANGE_EXPR,
   qo as DEFAULT_TTL_S,
-  kr as DashboardCacheProvider,
+  Po as DashboardCacheProvider,
   ti as DashboardRangePicker,
   mt as DashboardWsContext,
   Qi as EChart,
@@ -6310,7 +6306,7 @@ export {
   Is as InsightRow,
   Pi as InsightsAckWidget,
   Di as InsightsReadWidget,
-  Mr as InsightsWidget,
+  _r as InsightsWidget,
   Wi as KV,
   Je as KitDeniedError,
   Ka as KitProvider,
@@ -6324,12 +6320,12 @@ export {
   ws as PickerGroup,
   Ot as PrefDateInput,
   ji as PropTable,
-  _o as QUICK_PERSIST_MAX_AGE_MS,
+  Ro as QUICK_PERSIST_MAX_AGE_MS,
   vr as QUICK_PERSIST_VERSION,
   xr as RANGE_BANDS,
   wr as RANGE_COLUMNS,
   ei as RANGE_PRESETS,
-  _r as READ_SOURCE_GROUPS,
+  Rr as READ_SOURCE_GROUPS,
   js as ResizeHandle,
   Cs as SEVERITY_ORDER,
   as as SQL_SOURCE_ID,
@@ -6345,7 +6341,7 @@ export {
   ie as addUnits,
   Ui as axisChrome,
   Ma as bareId,
-  sn as browserZone,
+  on as browserZone,
   ls as buildSourceEntries,
   ve as canon,
   hs as channelEntries,
@@ -6353,7 +6349,7 @@ export {
   ki as datasourceEntries,
   Bo as datasourceListKey,
   Ko as datasourceListQueryOptions,
-  Co as datePlaceholder,
+  No as datePlaceholder,
   Li as denyClient,
   Bt as echartsTheme,
   rs as extWidgetEntries,
@@ -6369,7 +6365,7 @@ export {
   bs as inboxEntries,
   ps as insightEntries,
   Fo as isBuiltinName,
-  tn as isKitDenied,
+  en as isKitDenied,
   Ga as isOutOfScope,
   Ya as isWindowExpr,
   et as isoDayOf,
@@ -6379,10 +6375,10 @@ export {
   us as loadCatalog,
   Na as loadEcharts,
   ms as loadSourcePicker,
-  So as makeDashboardQueryClient,
-  on as makeInsightsClient,
+  Co as makeDashboardQueryClient,
+  nn as makeInsightsClient,
   ja as makeKitClient,
-  nn as makeSourceLoaders,
+  rn as makeSourceLoaders,
   jt as makeVizBatchLoader,
   Oi as memoryClient,
   oi as navBuiltins,
@@ -6390,22 +6386,22 @@ export {
   Es as originLine,
   Ja as parseDateField,
   Ae as parseRangeExpr,
-  Po as persistQuickCache,
+  Do as persistQuickCache,
   er as preferredZone,
   Xa as previewBound,
   $i as queryCatalogEntries,
   ss as queryEntries,
-  Ao as quickPersister,
+  Io as quickPersister,
   Za as rangeTimezone,
   el as registerPanelRenderer,
   rl as registerSpecHydrator,
   mi as resolveFreshnessTtl,
-  kn as resolveRange,
+  vn as resolveRange,
   os as rulesEntries,
   Ci as schemaColumnEntries,
   Ni as schemaTableEntries,
-  Nr as scopeKey,
-  Tr as selectionOf,
+  kr as scopeKey,
+  $r as selectionOf,
   Si as seriesCatalogEntries,
   Jo as seriesEntries,
   ci as seriesReadKey,
@@ -6413,14 +6409,14 @@ export {
   Ai as severityColor,
   Ii as severityRank,
   Ss as severityTone,
-  Tn as shortLabelOf,
+  $n as shortLabelOf,
   di as sourcePickerKey,
   Ze as specToCell,
   is as sqlSourceEntry,
   $s as statusTone,
   Ts as timeAgo,
   te as tokenColor,
-  rn as toolCallOf,
+  tn as toolCallOf,
   Hi as tooltipChrome,
   Ti as useCatalog,
   ri as useDashboardWs,
@@ -6442,6 +6438,6 @@ export {
   ai as vizFetchKey,
   si as vizQueryKey,
   ii as vizShapeKey,
-  Nn as weekStartOf,
+  kn as weekStartOf,
   Qo as widgetIdOf
 };

@@ -49,6 +49,15 @@ export interface PanelRenderRequest {
 
 export type PanelRenderer = (req: PanelRenderRequest) => ReactNode;
 
+// ── The renderer's OWN contract ──────────────────────────────────────────────────────────────────
+//
+// A registered renderer must wrap itself in whatever React context it needs — a query client, a cache
+// provider, a theme. `PanelEmbed` provides NONE of it, and cannot: a provider mounted by the kit copy
+// inside an extension's bundle is invisible to the host's copy, so the renderer would read the host
+// instance's empty default with the provider plainly in the tree three elements up. That failure has
+// already been had once (`useDashboardWs: no DashboardCacheProvider in tree`, from a renderer whose
+// embed was wrapped in exactly that provider).
+
 /** The cross-bundle slot. `Symbol.for` looks up the process-wide registry, so every copy of the kit on
  *  the page resolves the same symbol and therefore the same cell. */
 const SLOT = Symbol.for("@nube/dash-kit.panelRenderer.v1");

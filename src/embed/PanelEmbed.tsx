@@ -19,14 +19,22 @@
 // drags in drag/resize/breakpoint/persistence machinery that is dashboard product, not substrate — and
 // an ext page that wants two panels beside each other has CSS.
 //
-// The read cache is provided HERE, not asked for. The renderer's data hooks need it and break without
-// it, which is a gotcha no consumer should have to learn twice.
+// THE RENDERER OWNS ITS OWN CONTEXT, and this component deliberately provides none of it. That is not
+// a shortcut — it is forced by the same fact that makes the registry a global (see `panelRenderer`):
+// an extension's bundle carries its own copy of this kit, so a React provider mounted HERE lives in the
+// EXT's module instance, while the host's renderer reads the HOST's instance and sees nothing.
+//
+// It fails exactly as badly as that sounds. Wrapping the embed in the kit's own `DashboardCacheProvider`
+// looked right, passed every same-bundle test, and then threw
+// `useDashboardWs: no DashboardCacheProvider in tree` out of the host's renderer the first time a real
+// extension page mounted one — with the provider plainly in the tree, three elements up. A host
+// registering a renderer must wrap it in whatever context that renderer needs; the shell does exactly
+// that in `registerPanelHost`.
 //
 // One responsibility: resolve a panel to a cell and hand it to the host's renderer.
 
 import { useEffect, useState } from "react";
 
-import { DashboardCacheProvider } from "../cache/DashboardQueryProvider";
 import { ChartState } from "../charts/ChartStates";
 import { isKitDenied } from "../client/types";
 import { useKitOptional } from "../provider/KitProvider";
@@ -57,7 +65,7 @@ export interface PanelEmbedProps {
   className?: string;
 }
 
-/** Render one panel outside any grid, wrapped in the read cache its renderer requires. */
+/** Render one panel outside any grid. */
 export function PanelEmbed(props: PanelEmbedProps) {
   // The provider is OPTIONAL here, deliberately. A caller that hands over a ready `cell` (or a `spec`)
   // and its own `ws` needs no client at all — an embed should DEGRADE rather than demand context, the
@@ -65,13 +73,9 @@ export function PanelEmbed(props: PanelEmbedProps) {
   // says so honestly below rather than throwing a provider error out of a render.
   const kit = useKitOptional();
   const ws = props.ws ?? kit?.ws ?? "";
-  return (
-    // Keyed on `ws`: a workspace switch mints a fresh cache rather than serving another workspace's
-    // frames. (The workspace WALL is still the host's — this is de-dup, not security.)
-    <DashboardCacheProvider key={ws} ws={ws}>
-      <PanelEmbedInner {...props} ws={ws} />
-    </DashboardCacheProvider>
-  );
+  // Keyed on `ws` so a workspace switch remounts rather than reusing another workspace's resolved
+  // panel. (The workspace WALL is still the host's — this is de-dup, not security.)
+  return <PanelEmbedInner key={ws} {...props} ws={ws} />;
 }
 
 function PanelEmbedInner({
