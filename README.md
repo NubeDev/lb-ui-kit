@@ -42,7 +42,7 @@ is where the kit records which verb each loader rides and how its rows come back
 {
   "dependencies": {
     "@nube/ext-ui-sdk": "github:NubeDev/lb-ext-ui-sdk#ui-v0.16.0",
-    "@nube/dash-kit": "github:NubeDev/lb-ui-kit#kit-v0.6.0"
+    "@nube/dash-kit": "github:NubeDev/lb-ui-kit#kit-v0.7.0"
   }
 }
 ```
@@ -138,6 +138,7 @@ without a consumer lockfile regen is silently green locally and red everywhere e
 | `kit-v0.4.1` | Fix: `VizBatchProvider` no longer requires a `KitProvider` when a `call` is injected |
 | `kit-v0.5.0` | Picks up rubix-ai#127: configurable week start (`weekStart` prop), current-period windows resolve start-of-period → now, updated lb conformance fixture, `addUnits` exported |
 | `kit-v0.6.0` | **Tier 2a — the chart substrate**: `EChart` (the ONE engine wrapper), `echartsTheme` (the token bridge), `ChartState` (loading/denied/error/empty/table-only), `ShareBar`/`ShareLegend`. `echarts` is a **peer**, lazy-loaded inside the wrapper |
+| `kit-v0.7.0` | **Tier 2b — the embed**: `PanelEmbed` (a ready cell / a spec / a library `panel:{id}`) + `registerPanelRenderer`. `panel.get` joins `DASH_KIT_READ_SCOPE` |
 
 Tier 2's consumer arrived (`ext-pdnsw`, rubix-ai#170) and the cut was made from the SHELL's incumbents
 rather than the consumer's re-derivations — publishing a second wrapper into a family that already has
@@ -184,6 +185,49 @@ setEchartsLoader(() => import("./myEchartsRegistration").then((m) => m.echarts))
 **Not everything with proportions is a chart.** `ShareBar` draws parts-of-a-whole in CSS, because thirty
 roster rows must not mean thirty canvases and thirty ResizeObservers. If the reader gets the number from
 the legend, it is a `ShareBar`; if they read it off an axis, it is an `EChart`.
+
+### The embed (Tier 2b) — the host's REAL panels on your page
+
+This is the point of Tier 2: not lookalike components, but the shell's actual widgets.
+
+```tsx
+import { PanelEmbed } from "@nube/dash-kit";
+
+// A panel a team already curated in the shell's library, by id:
+<PanelEmbed id="panel:site-demand" range={range} />
+
+// Or an inline spec you build yourself:
+<PanelEmbed cell={{ i: "demand", view: "timeseries", sources: [{ refId: "A", tool: "viz.query", args }] }} />
+```
+
+Three modes — a ready `cell`, a `spec`, or a library **`panel:{id}`**. The library mode is the one worth
+noticing: an extension page can reuse curated panels **by id** instead of re-authoring their queries.
+The lens story holds — `panel.get` gates the record, and the panel's own sources re-check under the
+viewer's caps at render, so embedding a shared panel never widens access.
+
+**The kit does not draw the panel.** It owns the contract — the three modes, the fetch, the read cache
+(which the renderer needs and breaks without), and the honest `denied` / `error` / `loading` states —
+and delegates the drawing to whatever renderer the **host** registered:
+
+```ts
+// in the host shell, once at boot
+import { registerPanelRenderer } from "@nube/dash-kit";
+registerPanelRenderer(({ cell, ws, range, scope, refreshKey }) => (
+  <WidgetHost cell={cell} workspace={ws} range={range} scope={scope} refreshKey={refreshKey} />
+));
+```
+
+That is deliberate. A kit that shipped its own panel components would ship a SECOND renderer, which
+resembles the first until the day it doesn't. Delegating means a chart on an extension page and the same
+chart on a dashboard are literally the same code.
+
+The registry is a `Symbol.for()` slot on `globalThis`, not a React context — an extension's bundle
+carries its own copy of this kit, so a context created in the shell's copy is invisible to the ext's
+(the provider mounts, `useContext` returns the default, nothing resolves and nothing errors). A host that
+registers nothing gets an honest "no panel renderer registered" state, never an empty box.
+
+**No grid.** The kit's Tier 2 edge is the single-panel embed; laying panels out is host product (drag,
+resize, breakpoints, persistence, undo). An ext page that wants two panels side by side has CSS.
 
 ### Scoping a kit component
 

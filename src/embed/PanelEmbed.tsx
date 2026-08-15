@@ -1,0 +1,156 @@
+// PanelEmbed — ONE panel rendered outside a grid, from an extension page.
+//
+// This is the tier's product goal, in one component: an extension developer puts a real shell panel on
+// a custom page. Not a lookalike built from kit primitives — the actual panel, drawn by the actual
+// renderer, reading through the actual gated path, so a chart on an ext page and the same chart on a
+// dashboard cannot drift.
+//
+// Three input modes, exactly one required:
+//   • `cell` — a ready cell (an inline spec). Rendered directly, no fetch.
+//   • `spec` (+ `id`) — a spec the caller already holds. Turned into a cell, no fetch.
+//   • `id`   — a library panel id, in either grammar (`panel:{id}` or bare). Fetched via `panel.get`.
+//
+// The `id` mode is the one that matters most and is easiest to under-value: it means an ext page can
+// reuse the panels a team already CURATED in the shell's library, by id, rather than re-authoring their
+// queries in the extension. The lens story holds — `panel.get` gates the record, and the panel's own
+// sources re-check under the viewer's caps at render, so embedding a shared panel never widens access.
+//
+// NO GRID. The kit's Tier 2 edge is the single-panel embed; laying panels out is the host's job. A grid
+// drags in drag/resize/breakpoint/persistence machinery that is dashboard product, not substrate — and
+// an ext page that wants two panels beside each other has CSS.
+//
+// The read cache is provided HERE, not asked for. The renderer's data hooks need it and break without
+// it, which is a gotcha no consumer should have to learn twice.
+//
+// One responsibility: resolve a panel to a cell and hand it to the host's renderer.
+
+import { useEffect, useState } from "react";
+
+import { DashboardCacheProvider } from "../cache/DashboardQueryProvider";
+import { ChartState } from "../charts/ChartStates";
+import { isKitDenied } from "../client/types";
+import { useKitClient, useKitWs } from "../provider/KitProvider";
+import { getPanelRenderer, hydrateSpec } from "./panelRenderer";
+import {
+  bareId,
+  specToCell,
+  type EmbedCell,
+  type EmbedPanel,
+  type EmbedPanelSpec,
+  type EmbedRange,
+  type EmbedScope,
+} from "./panelSpec";
+
+export interface PanelEmbedProps {
+  /** The workspace to read in. Defaults to the `KitProvider`'s. */
+  ws?: string;
+  /** A library panel id — `panel:{id}` or bare. Fetched unless `cell`/`spec` is given. */
+  id?: string;
+  /** A spec the caller already holds — skips the fetch. Needs `id` for the cell key. */
+  spec?: EmbedPanelSpec;
+  /** A ready cell — rendered directly. */
+  cell?: EmbedCell;
+  range?: EmbedRange;
+  scope?: EmbedScope;
+  /** Bump to force a re-read. */
+  refreshKey?: number;
+  className?: string;
+}
+
+/** Render one panel outside any grid, wrapped in the read cache its renderer requires. */
+export function PanelEmbed(props: PanelEmbedProps) {
+  const providerWs = useKitWs();
+  const ws = props.ws ?? providerWs;
+  return (
+    // Keyed on `ws`: a workspace switch mints a fresh cache rather than serving another workspace's
+    // frames. (The workspace WALL is still the host's — this is de-dup, not security.)
+    <DashboardCacheProvider key={ws} ws={ws}>
+      <PanelEmbedInner {...props} ws={ws} />
+    </DashboardCacheProvider>
+  );
+}
+
+function PanelEmbedInner({
+  ws,
+  id: rawId,
+  spec,
+  cell,
+  range,
+  scope,
+  refreshKey,
+  className,
+}: PanelEmbedProps & { ws: string }) {
+  const client = useKitClient();
+  // Accept either grammar at the ONE point of consumption — see `bareId`.
+  const id = rawId ? bareId(rawId) : undefined;
+  const seed = cell ?? (id && spec ? specToCell(id, spec) : null);
+  const [resolved, setResolved] = useState<EmbedCell | null>(seed);
+  const [failure, setFailure] = useState<"denied" | "error" | null>(null);
+
+  useEffect(() => {
+    // Only a bare `id` needs the wire.
+    if (cell || spec || !id) {
+      setResolved(cell ?? (id && spec ? specToCell(id, spec) : null));
+      setFailure(null);
+      return;
+    }
+    let live = true;
+    setResolved(null);
+    setFailure(null);
+    client
+      .call("panel.get", { id })
+      .then((p) => {
+        if (!live) return;
+        const panel = p as EmbedPanel;
+        // `hydrateSpec` is the host's stored → renderable transform (wire-aliased view ids). Identity
+        // when the host registered none.
+        setResolved(specToCell(id, hydrateSpec(panel?.spec ?? {})));
+      })
+      .catch((e) => {
+        if (!live) return;
+        // A capability refusal is NOT an error and NOT an empty panel. Keeping them apart here is the
+        // same rule `ChartState` exists for and the same rule the cache's `retry: false` protects: a
+        // page that renders a denial as "nothing here" teaches an operator to distrust every panel.
+        setFailure(isKitDenied(e) ? "denied" : "error");
+      });
+    return () => {
+      live = false;
+    };
+  }, [client, id, spec, cell, ws]);
+
+  if (failure) {
+    return (
+      <ChartState
+        tone={failure}
+        className={className}
+        title={failure === "denied" ? "No access to this panel" : "This panel didn't load"}
+        detail={
+          failure === "denied"
+            ? "`panel.get` is not in this extension's granted scope, or the panel isn't shared with you."
+            : "The panel definition could not be fetched."
+        }
+      />
+    );
+  }
+  if (!resolved) return <ChartState tone="loading" className={className} />;
+
+  const render = getPanelRenderer();
+  if (!render) {
+    // Honest, and specific enough to fix: this is a HOST wiring gap (nobody called
+    // `registerPanelRenderer`), not a data problem and not a permission problem.
+    return (
+      <ChartState
+        tone="error"
+        className={className}
+        title="No panel renderer registered"
+        detail="The host has not registered a widget renderer with the kit, so this panel cannot be drawn."
+      />
+    );
+  }
+
+  return (
+    <div className={`dash-kit flex min-h-0 flex-1 flex-col ${className ?? ""}`} data-testid="panel-embed">
+      {render({ cell: resolved, ws, range, scope, refreshKey })}
+    </div>
+  );
+}

@@ -144,6 +144,11 @@ export * from "./nav-rail";
 // lazy-loaded inside the wrapper — a page with no chart downloads no engine. See `charts/index.ts`.
 export * from "./charts";
 
+// ── Tier 2b: the embed ───────────────────────────────────────────────────────────────────────────
+// One panel rendered outside a grid, from an extension page — by the HOST's real renderer, not a kit
+// lookalike. See `embed/panelRenderer.ts` for the seam and why it is a cross-bundle global.
+export * from "./embed";
+
 // ── The transport vocabulary the injected seams speak ────────────────────────────────────────────
 // `export *` above already re-exports every type module (`source-picker/types`, `insights/types`) —
 // they are what `makeKitClient` is typed against. Nothing extra is needed here; the surface is

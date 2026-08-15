@@ -48,6 +48,15 @@ export declare function axisChrome(theme: EchartsTheme): {
     };
 };
 
+/** Strip the `panel:` reference prefix. Idempotent, so a bare id passes through.
+ *
+ *  It exists because panel references travel in BOTH grammars — a `panel:{id}` REFERENCE (what a cell
+ *  ref, a map action target and a popout stack hold) and the bare record id `panel.get` keys on.
+ *  Normalising at the ONE point of consumption is what makes every present and future caller immune to
+ *  the mismatch; the alternative (each caller strips its own) is a bug that has already shipped once,
+ *  as a "panel not accessible" over a panel that existed and the viewer could read. */
+export declare function bareId(id: string): string;
+
 /** The transport seam the loader dispatches through — the SAME `{tool, args}` a `WidgetBridge.call`
  *  takes. Injected so a test can stub the wire (the sanctioned `invoke`-boundary pattern) and so the
  *  provider can bind a bridge leashed to `viz.query`/`viz.query_batch`. */
@@ -281,6 +290,9 @@ export declare interface ChartStateProps {
 
 export declare type ChartStateTone = "loading" | "denied" | "error" | "empty" | "table-only";
 
+/** Drop the registration. Exists for tests; a host has no reason to call it. */
+export declare function clearPanelRenderer(): void;
+
 /** The kit's DEFAULT registration list, stated so a consumer can read it rather than infer it:
  *
  *  ```ts
@@ -303,7 +315,7 @@ export declare const DASH_KIT_ECHARTS_PARTS: readonly ["BarChart", "LineChart", 
 /** The `[capabilities] request` list matching {@link DASH_KIT_READ_SCOPE}. Four, not five — the batch
  *  verb rides `mcp:viz.query:call` (above). Exported so an author can paste both halves and cannot
  *  accidentally request a capability that does not exist. */
-export declare const DASH_KIT_READ_CAPS: readonly ["mcp:viz.query:call", "mcp:series.read:call", "mcp:series.latest:call", "mcp:series.find:call"];
+export declare const DASH_KIT_READ_CAPS: readonly ["mcp:viz.query:call", "mcp:series.read:call", "mcp:series.latest:call", "mcp:series.find:call", "mcp:panel.get:call"];
 
 /** The `[ui] scope` a kit-built read page needs. Paste verbatim into `extension.toml`:
  *
@@ -318,7 +330,7 @@ export declare const DASH_KIT_READ_CAPS: readonly ["mcp:viz.query:call", "mcp:se
  * Note the asymmetry: five scope entries, four caps. `viz.query_batch` is the aliased one (above).
  * An admin may approve a SUBSET — the effective grant is the intersection, and every kit surface whose
  * verb was declined renders a **denied** state naming it, never an empty chart. */
-export declare const DASH_KIT_READ_SCOPE: readonly ["viz.query", "viz.query_batch", "series.read", "series.latest", "series.find"];
+export declare const DASH_KIT_READ_SCOPE: readonly ["viz.query", "viz.query_batch", "series.read", "series.latest", "series.find", "panel.get"];
 
 /** Provide the per-visit `QueryClient` + the current `ws` to the dashboard subtree. Keyed by the caller
  *  on `ws` (see `DashboardView`) so a workspace switch remounts with a fresh client and fresh keys. */
@@ -472,6 +484,29 @@ export declare interface EchartsTheme {
 }
 
 export declare function echartsTheme(): EchartsTheme;
+
+/** One renderable panel: a spec plus grid geometry. Opaque to the kit beyond `i`. */
+export declare interface EmbedCell extends Record<string, unknown> {
+    /** The cell key. Stable per placement. */
+    i: string;
+}
+
+/** A full panel record as `panel.get` returns it. */
+export declare interface EmbedPanel {
+    id: string;
+    title: string;
+    spec: EmbedPanelSpec;
+    [k: string]: unknown;
+}
+
+/** A panel's non-layout half — what `panel.get` returns under `spec`. Opaque to the kit. */
+export declare type EmbedPanelSpec = Record<string, unknown>;
+
+/** The dashboard time range a page may pass down. Opaque — the host reads its own shape. */
+export declare type EmbedRange = Record<string, unknown>;
+
+/** The resolved variable scope. Opaque for the same reason. */
+export declare type EmbedScope = Record<string, unknown>;
 
 export declare type Endpoint = 
 /** `now`, `now±<n><unit>`, optional `/<unit>` snap (truncate to the start of that unit). */
@@ -643,6 +678,13 @@ export declare interface FreshnessInputs {
 }
 
 export declare const FreshnessProvider: Provider<number>;
+
+/** The registered renderer, or `undefined` when the host registered none (a bare test page, a host
+ *  that does not ship widgets). Callers must render an honest state rather than an empty box. */
+export declare function getPanelRenderer(): PanelRenderer | undefined;
+
+/** Apply the registered hydrator, or pass the spec through untouched. */
+export declare function hydrateSpec(spec: EmbedPanelSpec): EmbedPanelSpec;
 
 /** Inbox rows → catalog entries. */
 export declare function inboxEntries(rows: InboxRow[]): CatalogEntry[];
@@ -1177,6 +1219,25 @@ export declare interface PageCursor {
 /** The reusable resizable side panel — ce InspectPanel look on shadcn primitives. */
 export declare function Panel({ open, onOpenChange, title, description, headerAside, footer, "aria-label": ariaLabel, initialWidth, minWidth, maxWidth, className, children, }: PanelProps): JSX_2.Element;
 
+/** Render one panel outside any grid, wrapped in the read cache its renderer requires. */
+export declare function PanelEmbed(props: PanelEmbedProps): JSX_2.Element;
+
+export declare interface PanelEmbedProps {
+    /** The workspace to read in. Defaults to the `KitProvider`'s. */
+    ws?: string;
+    /** A library panel id — `panel:{id}` or bare. Fetched unless `cell`/`spec` is given. */
+    id?: string;
+    /** A spec the caller already holds — skips the fetch. Needs `id` for the cell key. */
+    spec?: EmbedPanelSpec;
+    /** A ready cell — rendered directly. */
+    cell?: EmbedCell;
+    range?: EmbedRange;
+    scope?: EmbedScope;
+    /** Bump to force a re-read. */
+    refreshKey?: number;
+    className?: string;
+}
+
 export declare interface PanelProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -1200,6 +1261,23 @@ export declare interface PanelProps {
     className?: string;
     /** The scrollable body — the host stacks <Section>/<PropTable>/<KV> here. */
     children: ReactNode;
+}
+
+export declare type PanelRenderer = (req: PanelRenderRequest) => ReactNode;
+
+/** What the host is asked to draw. Deliberately the SAME arguments a dashboard grid hands its cells —
+ *  an embedded panel is not a different kind of panel, it is the same panel outside a grid. */
+export declare interface PanelRenderRequest {
+    cell: EmbedCell;
+    /** The workspace the panel reads in. A de-dup/scoping key, never the security wall. */
+    ws: string;
+    /** The dashboard time range, if the page has one. Absent ⇒ the panel's own/default window. */
+    range?: EmbedRange;
+    /** The resolved variable scope. Absent ⇒ the host's empty scope — an embed DEGRADES rather than
+     *  demanding dashboard context. */
+    scope?: EmbedScope;
+    /** Bumped to force a re-read (an auto-refresh tick). */
+    refreshKey?: number;
 }
 
 /** The declared type of a rule param — steers the host's input control + value coercion (mirrors the
@@ -1403,6 +1481,16 @@ export declare function rangeTimezone(dashboardTz?: string, prefsTz?: string, zo
  *  controls are a separate authoring intent); a host that wants them passes its own list (see
  *  `BUILDER_SOURCE_GROUPS`). Exported so every consumer renders ONE canonical label set. */
 export declare const READ_SOURCE_GROUPS: SourceGroup[];
+
+/** Register the host's widget renderer. Call once at boot, before any embed mounts.
+ *
+ *  The shell registers its `WidgetHost` — the ONE shipped widget path — so an extension page embedding
+ *  a panel gets the shell's real chart code, not a copy of it. */
+export declare function registerPanelRenderer(renderer: PanelRenderer): void;
+
+/** Register the host's stored-spec → renderable-spec transform. Call once at boot, beside
+ *  {@link registerPanelRenderer}. */
+export declare function registerSpecHydrator(hydrate: SpecHydrator): void;
 
 export declare interface Resizable {
     /** Current width in px. */
@@ -1830,6 +1918,18 @@ export declare interface SourceSelection {
     /** A packaged tile view key `ext:<id>/<widget>` (a finished extension widget). */
     viewKey?: string;
 }
+
+/** Restore a stored spec into its renderable form. */
+export declare type SpecHydrator = (spec: EmbedPanelSpec) => EmbedPanelSpec;
+
+/** A spec + an id → a renderable cell. Default geometry is a full-width band: an embed has no grid to
+ *  take its size from, and the host sizes the container anyway. */
+export declare function specToCell(id: string, spec: EmbedPanelSpec, layout?: {
+    x?: number;
+    y?: number;
+    w?: number;
+    h?: number;
+}): EmbedCell;
 
 /** The id of the "SQL query" entry — the visual SQL builder + raw-SQL source over `store.query`. */
 export declare const SQL_SOURCE_ID = "sql:query";
