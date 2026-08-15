@@ -1722,7 +1722,10 @@ export declare function ShareLegend({ rows, label, className, }: {
 export declare interface ShareLegendRow {
     key: string;
     label: string;
-    color: string;
+    /** A resolved colour for the swatch. */
+    color?: string;
+    /** A CSS class carrying the swatch colour instead — see `ShareSegment.className`. */
+    className?: string;
     /** The primary figure, already formatted by the caller — the kit does not decide a locale or a unit. */
     value: string;
     /** The secondary figure (usually the share). Omitted ⇒ one number. */
@@ -1737,8 +1740,17 @@ export declare interface ShareLegendRow {
 export declare interface ShareSegment {
     key: string;
     value: number;
-    /** A resolved colour (a host token read through `tokenColor`, or any CSS colour). */
-    color: string;
+    /** A resolved colour — a host token read through `tokenColor`, or any CSS colour string. */
+    color?: string;
+    /** A CSS class carrying the colour instead, for a caller whose vocabulary is already a set of
+     *  utility classes.
+     *
+     *  Prefer this. A DOM bar can take its colour from a CLASS, which is the whole advantage it has over
+     *  a canvas: it follows a host re-theme through the cascade for free, with no resolution step, no
+     *  `getComputedStyle`, and — the one that matters when thirty of these render in a roster — no
+     *  per-bar MutationObserver watching for the theme to change. Resolve a colour to a string only when
+     *  something downstream genuinely cannot read a class. */
+    className?: string;
     /** Hover text — usually the value and what it means, since the bar itself carries no number. */
     title?: string;
     /** Overlay a diagonal hatch so this segment stays separable from its neighbour without colour. */

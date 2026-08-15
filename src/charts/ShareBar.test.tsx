@@ -36,6 +36,17 @@ describe("ShareBar", () => {
     expect(container.firstElementChild?.getAttribute("aria-hidden")).toBeNull();
   });
 
+  it("takes a CLASS for its colour — a DOM bar follows a re-theme through the cascade, for free", () => {
+    // The point of this over a resolved colour string: no `getComputedStyle`, and no per-bar
+    // MutationObserver watching the theme. Thirty roster rows must not mean thirty observers either.
+    const { container } = render(
+      <ShareBar segments={[{ key: "live", value: 1, className: "bg-success" }]} />,
+    );
+    const seg = container.querySelector<HTMLElement>('[data-share-key="live"]');
+    expect(seg?.className).toContain("bg-success");
+    expect(seg?.style.backgroundColor).toBe("");
+  });
+
   it("hatches a segment so two categories stay separable without colour", () => {
     const { container } = render(
       <ShareBar segments={[{ ...seg("never", 1), hatch: true }, seg("dark", 1)]} />,

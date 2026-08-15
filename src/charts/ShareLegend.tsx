@@ -16,7 +16,10 @@ import type { ReactNode } from "react";
 export interface ShareLegendRow {
   key: string;
   label: string;
-  color: string;
+  /** A resolved colour for the swatch. */
+  color?: string;
+  /** A CSS class carrying the swatch colour instead — see `ShareSegment.className`. */
+  className?: string;
   /** The primary figure, already formatted by the caller — the kit does not decide a locale or a unit. */
   value: string;
   /** The secondary figure (usually the share). Omitted ⇒ one number. */
@@ -44,9 +47,9 @@ export function ShareLegend({
         <li key={r.key} className="flex items-center gap-1.5 text-xs" title={r.title} data-share-row={r.key}>
           <span
             aria-hidden
-            className="h-2 w-2 shrink-0 rounded-[2px]"
+            className={`h-2 w-2 shrink-0 rounded-[2px] ${r.className ?? ""}`}
             style={{
-              backgroundColor: r.color,
+              ...(r.color ? { backgroundColor: r.color } : {}),
               ...(r.hatch
                 ? {
                     backgroundImage:

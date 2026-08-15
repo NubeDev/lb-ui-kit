@@ -26,8 +26,17 @@
 export interface ShareSegment {
   key: string;
   value: number;
-  /** A resolved colour (a host token read through `tokenColor`, or any CSS colour). */
-  color: string;
+  /** A resolved colour — a host token read through `tokenColor`, or any CSS colour string. */
+  color?: string;
+  /** A CSS class carrying the colour instead, for a caller whose vocabulary is already a set of
+   *  utility classes.
+   *
+   *  Prefer this. A DOM bar can take its colour from a CLASS, which is the whole advantage it has over
+   *  a canvas: it follows a host re-theme through the cascade for free, with no resolution step, no
+   *  `getComputedStyle`, and — the one that matters when thirty of these render in a roster — no
+   *  per-bar MutationObserver watching for the theme to change. Resolve a colour to a string only when
+   *  something downstream genuinely cannot read a class. */
+  className?: string;
   /** Hover text — usually the value and what it means, since the bar itself carries no number. */
   title?: string;
   /** Overlay a diagonal hatch so this segment stays separable from its neighbour without colour. */
@@ -68,12 +77,13 @@ export function ShareBar({ segments, label, height = 6, className }: ShareBarPro
             key={s.key}
             title={s.title}
             data-share-key={s.key}
+            className={s.className}
             // `backgroundImage` + `backgroundColor` rather than the `background` shorthand: the
             // shorthand drops a gradient when a colour is also given in some engines (jsdom among
             // them), which silently loses the hatch that keeps two categories separable.
             style={{
               width: `${(s.value / total) * 100}%`,
-              backgroundColor: s.color,
+              ...(s.color ? { backgroundColor: s.color } : {}),
               ...(s.hatch ? { backgroundImage: HATCH } : {}),
             }}
           />
