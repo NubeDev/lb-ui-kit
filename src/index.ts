@@ -139,6 +139,11 @@ export * from "./insights";
 export * from "./panel";
 export * from "./nav-rail";
 
+// ── Tier 2a: the chart substrate ─────────────────────────────────────────────────────────────────
+// Extracted from the rubix-ai shell, which is where the mature incumbents were. `echarts` is a PEER,
+// lazy-loaded inside the wrapper — a page with no chart downloads no engine. See `charts/index.ts`.
+export * from "./charts";
+
 // ── The transport vocabulary the injected seams speak ────────────────────────────────────────────
 // `export *` above already re-exports every type module (`source-picker/types`, `insights/types`) —
 // they are what `makeKitClient` is typed against. Nothing extra is needed here; the surface is

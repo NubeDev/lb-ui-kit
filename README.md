@@ -42,7 +42,7 @@ is where the kit records which verb each loader rides and how its rows come back
 {
   "dependencies": {
     "@nube/ext-ui-sdk": "github:NubeDev/lb-ext-ui-sdk#ui-v0.16.0",
-    "@nube/dash-kit": "github:NubeDev/lb-ui-kit#kit-v0.5.0"
+    "@nube/dash-kit": "github:NubeDev/lb-ui-kit#kit-v0.6.0"
   }
 }
 ```
@@ -137,9 +137,53 @@ without a consumer lockfile regen is silently green locally and red everywhere e
 | `kit-v0.4.0` | Tier 1c — the substrate: `source-picker`, `insights`, `panel`, `nav-rail` (moved verbatim; `ui/packages/*` deleted) |
 | `kit-v0.4.1` | Fix: `VizBatchProvider` no longer requires a `KitProvider` when a `call` is injected |
 | `kit-v0.5.0` | Picks up rubix-ai#127: configurable week start (`weekStart` prop), current-period windows resolve start-of-period → now, updated lb conformance fixture, `addUnits` exported |
+| `kit-v0.6.0` | **Tier 2a — the chart substrate**: `EChart` (the ONE engine wrapper), `echartsTheme` (the token bridge), `ChartState` (loading/denied/error/empty/table-only), `ShareBar`/`ShareLegend`. `echarts` is a **peer**, lazy-loaded inside the wrapper |
 
-Tier 2 (genui, the viz/chart kit) is deliberately out until a real consumer defines
-its edge.
+Tier 2's consumer arrived (`ext-pdnsw`, rubix-ai#170) and the cut was made from the SHELL's incumbents
+rather than the consumer's re-derivations — publishing a second wrapper into a family that already has
+one is the parallel-renderer drift this kit exists to stop.
+
+### The chart substrate (Tier 2a)
+
+```tsx
+import { EChart, ChartState, echartsTheme, ShareBar } from "@nube/dash-kit";
+
+<EChart
+  ariaLabel="site demand"
+  option={(theme) => ({ series: [{ type: "line", data, itemStyle: { color: theme.accent } }] })}
+  summary={<ol className="sr-only">{data.map((v, i) => <li key={i}>{v}</li>)}</ol>}
+/>
+```
+
+Four things you get for free, each of them a silent failure elsewhere:
+
+- **Resize.** ECharts has no `<ResponsiveContainer>` — an instance sizes itself once at creation. The
+  `ResizeObserver` is in the wrapper.
+- **`notMerge`.** ECharts merges option updates by default, so a series that *disappears* keeps its old
+  data on screen. Options replace whole.
+- **Theme.** `option` is a **function of the resolved theme**, re-run when the host flips light/dark.
+  Colours come from the **host's** CSS variables (canvas cannot read a class), so a kit chart never
+  drifts from the rows beside it.
+- **`summary`.** A visually-hidden, DOM-order readout of what the canvas draws. It is the accessibility
+  story *and* the render-test target — which is why the renderer can stay **canvas** (`init` throws
+  under jsdom; the wrapper bails quietly and the summary is still there).
+
+**`echarts` is a peer, and it is lazy.** The wrapper `import()`s the engine from an effect, so a page
+with no chart downloads none of it. The kit's default registration is small and documented
+(`DASH_KIT_ECHARTS_PARTS`): `BarChart`, `LineChart`, `PieChart`, `ScatterChart`, `GridComponent`,
+`LegendComponent`, `TooltipComponent`, `DatasetComponent`, `MarkLineComponent`, `MarkAreaComponent`,
+`TitleComponent`, `CanvasRenderer`. **An unregistered series type fails silently** — the chart mounts,
+sizes itself and draws nothing but axes — so a host with a wider vocabulary replaces the list:
+
+```ts
+import { setEchartsLoader } from "@nube/dash-kit";
+// The thunk keeps it lazy. Register the kit's parts PLUS your own in that module.
+setEchartsLoader(() => import("./myEchartsRegistration").then((m) => m.echarts));
+```
+
+**Not everything with proportions is a chart.** `ShareBar` draws parts-of-a-whole in CSS, because thirty
+roster rows must not mean thirty canvases and thirty ResizeObservers. If the reader gets the number from
+the legend, it is a `ShareBar`; if they read it off an axis, it is an `EChart`.
 
 ### Scoping a kit component
 
