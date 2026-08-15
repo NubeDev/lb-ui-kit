@@ -29,7 +29,7 @@ import { useEffect, useState } from "react";
 import { DashboardCacheProvider } from "../cache/DashboardQueryProvider";
 import { ChartState } from "../charts/ChartStates";
 import { isKitDenied } from "../client/types";
-import { useKitClient, useKitWs } from "../provider/KitProvider";
+import { useKitOptional } from "../provider/KitProvider";
 import { getPanelRenderer, hydrateSpec } from "./panelRenderer";
 import {
   bareId,
@@ -59,8 +59,12 @@ export interface PanelEmbedProps {
 
 /** Render one panel outside any grid, wrapped in the read cache its renderer requires. */
 export function PanelEmbed(props: PanelEmbedProps) {
-  const providerWs = useKitWs();
-  const ws = props.ws ?? providerWs;
+  // The provider is OPTIONAL here, deliberately. A caller that hands over a ready `cell` (or a `spec`)
+  // and its own `ws` needs no client at all — an embed should DEGRADE rather than demand context, the
+  // same rule the absent `scope`/`range` follow. Only the library-`id` mode reaches the wire, and it
+  // says so honestly below rather than throwing a provider error out of a render.
+  const kit = useKitOptional();
+  const ws = props.ws ?? kit?.ws ?? "";
   return (
     // Keyed on `ws`: a workspace switch mints a fresh cache rather than serving another workspace's
     // frames. (The workspace WALL is still the host's — this is de-dup, not security.)
@@ -80,7 +84,7 @@ function PanelEmbedInner({
   refreshKey,
   className,
 }: PanelEmbedProps & { ws: string }) {
-  const client = useKitClient();
+  const kit = useKitOptional();
   // Accept either grammar at the ONE point of consumption — see `bareId`.
   const id = rawId ? bareId(rawId) : undefined;
   const seed = cell ?? (id && spec ? specToCell(id, spec) : null);
@@ -94,10 +98,15 @@ function PanelEmbedInner({
       setFailure(null);
       return;
     }
+    if (!kit?.client) {
+      // A library id with no way to reach the node. A HOST wiring gap, named as one.
+      setFailure("error");
+      return;
+    }
     let live = true;
     setResolved(null);
     setFailure(null);
-    client
+    kit.client
       .call("panel.get", { id })
       .then((p) => {
         if (!live) return;
@@ -116,7 +125,7 @@ function PanelEmbedInner({
     return () => {
       live = false;
     };
-  }, [client, id, spec, cell, ws]);
+  }, [kit, id, spec, cell, ws]);
 
   if (failure) {
     return (

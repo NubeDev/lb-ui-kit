@@ -42,7 +42,7 @@ is where the kit records which verb each loader rides and how its rows come back
 {
   "dependencies": {
     "@nube/ext-ui-sdk": "github:NubeDev/lb-ext-ui-sdk#ui-v0.16.0",
-    "@nube/dash-kit": "github:NubeDev/lb-ui-kit#kit-v0.7.0"
+    "@nube/dash-kit": "github:NubeDev/lb-ui-kit#kit-v0.7.1"
   }
 }
 ```
@@ -138,7 +138,7 @@ without a consumer lockfile regen is silently green locally and red everywhere e
 | `kit-v0.4.1` | Fix: `VizBatchProvider` no longer requires a `KitProvider` when a `call` is injected |
 | `kit-v0.5.0` | Picks up rubix-ai#127: configurable week start (`weekStart` prop), current-period windows resolve start-of-period → now, updated lb conformance fixture, `addUnits` exported |
 | `kit-v0.6.0` | **Tier 2a — the chart substrate**: `EChart` (the ONE engine wrapper), `echartsTheme` (the token bridge), `ChartState` (loading/denied/error/empty/table-only), `ShareBar`/`ShareLegend`. `echarts` is a **peer**, lazy-loaded inside the wrapper |
-| `kit-v0.7.0` | **Tier 2b — the embed**: `PanelEmbed` (a ready cell / a spec / a library `panel:{id}`) + `registerPanelRenderer`. `panel.get` joins `DASH_KIT_READ_SCOPE` |
+| `kit-v0.7.1` | **Tier 2b — the embed**: `PanelEmbed` (a ready cell / a spec / a library `panel:{id}`) + `registerPanelRenderer`. `panel.get` joins `DASH_KIT_READ_SCOPE` |
 
 Tier 2's consumer arrived (`ext-pdnsw`, rubix-ai#170) and the cut was made from the SHELL's incumbents
 rather than the consumer's re-derivations — publishing a second wrapper into a family that already has

@@ -107,4 +107,11 @@ describe("PanelEmbed", () => {
     await waitFor(() => expect(container.querySelector("[data-chart-state]")).toBeTruthy());
     expect(screen.getByText(/no panel renderer registered/i)).toBeTruthy();
   });
+
+  it("needs NO provider for a ready cell — an embed degrades, it does not demand context", async () => {
+    registerPanelRenderer((req) => <div data-testid="drawn">{String(req.cell.i)}</div>);
+    // No `KitProvider` at all: the caller brought the cell and the workspace.
+    render(<PanelEmbed ws="acme" cell={{ i: "standalone" }} />);
+    expect(await screen.findByTestId("drawn")).toHaveProperty("textContent", "standalone");
+  });
 });
