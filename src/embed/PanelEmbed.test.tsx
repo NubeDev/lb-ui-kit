@@ -102,6 +102,45 @@ describe("PanelEmbed", () => {
     );
   });
 
+  it("renders a MISSING panel as unavailable — not as a transport failure", async () => {
+    // THE REGRESSION. lb answers a deleted (or unshared) panel with 403 `no such tool`, so this used to
+    // fall into the generic error branch and claim "the panel definition could not be fetched" over a
+    // panel that had simply been removed. It also meant a real `out_of_scope` denial — the trap
+    // `DASH_KIT_READ_SCOPE` exists to close — rendered as an error rather than as denied.
+    registerPanelRenderer(() => <div data-testid="drawn" />);
+    const call = async () => {
+      throw new Error("no such tool");
+    };
+    const { container } = mount(<PanelEmbed id="panel:deleted-one" />, call);
+
+    await waitFor(() =>
+      expect(container.querySelector("[data-embed-failure]")?.getAttribute("data-embed-failure")).toBe(
+        "unavailable",
+      ),
+    );
+    // It says BOTH things, because the wire genuinely cannot tell them apart — and it names the id, so
+    // a stale link is fixable without opening a console.
+    expect(screen.getByText(/may have been deleted, or it isn.t shared with you/i)).toBeTruthy();
+    expect(screen.getByText(/deleted-one/)).toBeTruthy();
+    // Still no retry, and still not drawn.
+    expect(container.querySelector("button")).toBeNull();
+    expect(screen.queryByTestId("drawn")).toBeNull();
+  });
+
+  it("renders an out-of-scope rejection as DENIED, naming the verb", async () => {
+    registerPanelRenderer(() => <div />);
+    const call = async () => {
+      throw new Error("out_of_scope: panel.get");
+    };
+    const { container } = mount(<PanelEmbed id="p1" />, call);
+    await waitFor(() =>
+      expect(container.querySelector("[data-chart-state]")?.getAttribute("data-chart-state")).toBe(
+        "denied",
+      ),
+    );
+    expect(screen.getByText(/panel\.get/)).toBeTruthy();
+  });
+
   it("says so when the host registered no renderer, rather than drawing an empty box", async () => {
     const { container } = mount(<PanelEmbed cell={{ i: "x" }} />);
     await waitFor(() => expect(container.querySelector("[data-chart-state]")).toBeTruthy());

@@ -7,6 +7,8 @@ import "./dash-kit.css";
 // ── Tier 0: the whole integration ────────────────────────────────────────────────────────────────
 export { makeKitClient, makeSourceLoaders, makeInsightsClient, toolCallOf } from "./client/makeKitClient";
 export { KitDeniedError, isKitDenied, isOutOfScope } from "./client/types";
+export { classifyReadFailure } from "./client/failure";
+export type { ReadFailure } from "./client/failure";
 export type {
   CallLike,
   KitClient,

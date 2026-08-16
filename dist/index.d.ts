@@ -274,7 +274,7 @@ export declare interface ChannelRow {
  *  one icon vocabulary rather than importing lucide twice. */
 export declare const CHART_STATE_ICON: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>;
 
-export declare function ChartState({ tone, title, detail, action, className }: ChartStateProps): JSX_2.Element;
+export declare function ChartState({ tone, title, detail, action, className, ...rest }: ChartStateProps): JSX_2.Element;
 
 export declare interface ChartStateProps {
     tone: ChartStateTone;
@@ -286,9 +286,14 @@ export declare interface ChartStateProps {
      *  denial does not become a grant by asking again, which is the whole point of `retry: false`. */
     action?: ReactNode;
     className?: string;
+    /** A checkable marker for a caller that renders two different CLAIMS under one tone (the embed's
+     *  "not available" vs its "no access", which share the `denied` chrome). Surfaces on the root. */
+    "data-embed-failure"?: string;
 }
 
 export declare type ChartStateTone = "loading" | "denied" | "error" | "empty" | "table-only";
+
+export declare function classifyReadFailure(e: unknown): ReadFailure;
 
 /** Drop the registration. Exists for tests; a host has no reason to call it. */
 export declare function clearPanelRenderer(): void;
@@ -1481,6 +1486,8 @@ export declare function rangeTimezone(dashboardTz?: string, prefsTz?: string, zo
  *  controls are a separate authoring intent); a host that wants them passes its own list (see
  *  `BUILDER_SOURCE_GROUPS`). Exported so every consumer renders ONE canonical label set. */
 export declare const READ_SOURCE_GROUPS: SourceGroup[];
+
+export declare type ReadFailure = "denied" | "unavailable" | "error";
 
 /** Register the host's widget renderer. Call once at boot, before any embed mounts.
  *

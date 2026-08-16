@@ -85,9 +85,12 @@ export interface ChartStateProps {
    *  denial does not become a grant by asking again, which is the whole point of `retry: false`. */
   action?: ReactNode;
   className?: string;
+  /** A checkable marker for a caller that renders two different CLAIMS under one tone (the embed's
+   *  "not available" vs its "no access", which share the `denied` chrome). Surfaces on the root. */
+  "data-embed-failure"?: string;
 }
 
-export function ChartState({ tone, title, detail, action, className }: ChartStateProps) {
+export function ChartState({ tone, title, detail, action, className, ...rest }: ChartStateProps) {
   const t = TONE[tone];
   const Icon = t.icon;
   const body = detail === null ? undefined : (detail ?? t.detail);
@@ -99,6 +102,7 @@ export function ChartState({ tone, title, detail, action, className }: ChartStat
       role="status"
       aria-live="polite"
       data-chart-state={tone}
+      {...rest}
       className={`dash-kit flex h-full min-h-24 flex-col items-center justify-center gap-3 rounded-xl border border-dashed p-6 text-center ${t.wrap} ${className ?? ""}`}
     >
       <span className={`rounded-xl border p-2.5 ${t.chip}`}>

@@ -36,7 +36,7 @@
 import { useEffect, useState } from "react";
 
 import { ChartState } from "../charts/ChartStates";
-import { isKitDenied } from "../client/types";
+import { classifyReadFailure, type ReadFailure } from "../client/failure";
 import { useKitOptional } from "../provider/KitProvider";
 import { getPanelRenderer, hydrateSpec } from "./panelRenderer";
 import {
@@ -93,7 +93,7 @@ function PanelEmbedInner({
   const id = rawId ? bareId(rawId) : undefined;
   const seed = cell ?? (id && spec ? specToCell(id, spec) : null);
   const [resolved, setResolved] = useState<EmbedCell | null>(seed);
-  const [failure, setFailure] = useState<"denied" | "error" | null>(null);
+  const [failure, setFailure] = useState<ReadFailure | null>(null);
 
   useEffect(() => {
     // Only a bare `id` needs the wire.
@@ -121,30 +121,19 @@ function PanelEmbedInner({
       })
       .catch((e) => {
         if (!live) return;
-        // A capability refusal is NOT an error and NOT an empty panel. Keeping them apart here is the
-        // same rule `ChartState` exists for and the same rule the cache's `retry: false` protects: a
-        // page that renders a denial as "nothing here" teaches an operator to distrust every panel.
-        setFailure(isKitDenied(e) ? "denied" : "error");
+        // A capability refusal is NOT an error, a missing record is NOT a transport failure, and
+        // neither is an empty panel. Keeping the three apart is the same rule `ChartState` exists for
+        // and the same rule the cache's `retry: false` protects: a page that renders a denial as
+        // "nothing here" — or a deleted panel as "this broke" — teaches an operator to distrust every
+        // state it shows them. See `classifyReadFailure` for what the wire can and cannot tell us.
+        setFailure(classifyReadFailure(e));
       });
     return () => {
       live = false;
     };
   }, [kit, id, spec, cell, ws]);
 
-  if (failure) {
-    return (
-      <ChartState
-        tone={failure}
-        className={className}
-        title={failure === "denied" ? "No access to this panel" : "This panel didn't load"}
-        detail={
-          failure === "denied"
-            ? "`panel.get` is not in this extension's granted scope, or the panel isn't shared with you."
-            : "The panel definition could not be fetched."
-        }
-      />
-    );
-  }
+  if (failure) return <EmbedFailure failure={failure} id={id} className={className} />;
   if (!resolved) return <ChartState tone="loading" className={className} />;
 
   const render = getPanelRenderer();
@@ -165,5 +154,51 @@ function PanelEmbedInner({
     <div className={`dash-kit flex min-h-0 flex-1 flex-col ${className ?? ""}`} data-testid="panel-embed">
       {render({ cell: resolved, ws, range, scope, refreshKey })}
     </div>
+  );
+}
+
+/** The three ways a panel read fails, each stated as what it IS.
+ *
+ *  `unavailable` carries the awkward truth rather than picking a side: lb answers a missing record and
+ *  an unreadable one identically, on purpose (see `classifyReadFailure`), so this names both. It wears
+ *  the `denied` CHROME because either way an operator has to do something — but it does not claim a
+ *  permission problem it cannot prove. */
+function EmbedFailure({
+  failure,
+  id,
+  className,
+}: {
+  failure: ReadFailure;
+  id?: string;
+  className?: string;
+}) {
+  if (failure === "denied") {
+    return (
+      <ChartState
+        tone="denied"
+        className={className}
+        title="No access to this panel"
+        detail={`\`panel.get\` is not in this extension's granted scope${id ? ` (asked for \`${id}\`)` : ""}.`}
+      />
+    );
+  }
+  if (failure === "unavailable") {
+    return (
+      <ChartState
+        tone="denied"
+        className={className}
+        data-embed-failure="unavailable"
+        title="Panel not available"
+        detail={`${id ? `\`${id}\` ` : "This panel "}may have been deleted, or it isn't shared with you.`}
+      />
+    );
+  }
+  return (
+    <ChartState
+      tone="error"
+      className={className}
+      title="This panel didn't load"
+      detail="The panel definition could not be fetched."
+    />
   );
 }

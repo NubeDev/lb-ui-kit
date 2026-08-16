@@ -42,7 +42,7 @@ is where the kit records which verb each loader rides and how its rows come back
 {
   "dependencies": {
     "@nube/ext-ui-sdk": "github:NubeDev/lb-ext-ui-sdk#ui-v0.16.0",
-    "@nube/dash-kit": "github:NubeDev/lb-ui-kit#kit-v0.7.3"
+    "@nube/dash-kit": "github:NubeDev/lb-ui-kit#kit-v0.7.4"
   }
 }
 ```
