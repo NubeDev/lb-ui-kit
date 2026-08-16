@@ -1,10 +1,13 @@
 import { Context } from 'react';
+import { ForwardRefExoticComponent } from 'react';
 import { JSX as JSX_2 } from 'react';
+import { LucideProps } from 'lucide-react';
 import { Persister } from '@tanstack/react-query-persist-client';
 import { Provider } from 'react';
 import { QueryClient } from '@tanstack/react-query';
 import type * as React_2 from 'react';
 import { ReactNode } from 'react';
+import { RefAttributes } from 'react';
 
 /** A write action — the tool a switch/slider/button calls on interaction. `argsTemplate` carries a
  *  `{{value}}` slot the interaction fills. */
@@ -16,6 +19,43 @@ export declare interface Action {
 /** Step an instant by `n` units in `tz` — exact for s/m/h, calendar (wall-clock-preserving, with
  *  month-end clamping) for d/w/M/q/y. */
 export declare function addUnits(ms: number, n: number, unit: StepUnit, tz: string): number;
+
+/** The shared axis chrome (muted ticks, faint split lines) every echarts panel spreads onto its axes,
+ *  so the panels cannot drift from each other. */
+export declare function axisChrome(theme: EchartsTheme): {
+    axisLine: {
+        lineStyle: {
+            color: string;
+        };
+    };
+    axisTick: {
+        show: boolean;
+    };
+    axisLabel: {
+        color: string;
+        fontSize: number;
+    };
+    splitLine: {
+        lineStyle: {
+            color: string;
+            opacity: number;
+            type: "dashed";
+        };
+    };
+    nameTextStyle: {
+        color: string;
+        fontSize: number;
+    };
+};
+
+/** Strip the `panel:` reference prefix. Idempotent, so a bare id passes through.
+ *
+ *  It exists because panel references travel in BOTH grammars — a `panel:{id}` REFERENCE (what a cell
+ *  ref, a map action target and a popout stack hold) and the bare record id `panel.get` keys on.
+ *  Normalising at the ONE point of consumption is what makes every present and future caller immune to
+ *  the mismatch; the alternative (each caller strips its own) is a bug that has already shipped once,
+ *  as a "panel not accessible" over a panel that existed and the viewer could read. */
+export declare function bareId(id: string): string;
 
 /** The transport seam the loader dispatches through — the SAME `{tool, args}` a `WidgetBridge.call`
  *  takes. Injected so a test can stub the wire (the sanctioned `invoke`-boundary pattern) and so the
@@ -230,10 +270,57 @@ export declare interface ChannelRow {
     id: string;
 }
 
+/** The glyph a caller gets when it wants the chart look with its own copy. Exported so a host can keep
+ *  one icon vocabulary rather than importing lucide twice. */
+export declare const CHART_STATE_ICON: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>;
+
+export declare function ChartState({ tone, title, detail, action, className, ...rest }: ChartStateProps): JSX_2.Element;
+
+export declare interface ChartStateProps {
+    tone: ChartStateTone;
+    /** Override the tone's default headline. */
+    title?: string;
+    /** Override the tone's default second line. Pass `null` to show none. */
+    detail?: string | null;
+    /** An optional way OUT of the state — a link to the page that fixes it. Never a bare "retry": a
+     *  denial does not become a grant by asking again, which is the whole point of `retry: false`. */
+    action?: ReactNode;
+    className?: string;
+    /** A checkable marker for a caller that renders two different CLAIMS under one tone (the embed's
+     *  "not available" vs its "no access", which share the `denied` chrome). Surfaces on the root. */
+    "data-embed-failure"?: string;
+}
+
+export declare type ChartStateTone = "loading" | "denied" | "error" | "empty" | "table-only";
+
+export declare function classifyReadFailure(e: unknown): ReadFailure;
+
+/** Drop the registration. Exists for tests; a host has no reason to call it. */
+export declare function clearPanelRenderer(): void;
+
+/** The kit's DEFAULT registration list, stated so a consumer can read it rather than infer it:
+ *
+ *  ```ts
+ *  echarts.use([
+ *    BarChart, LineChart, PieChart, ScatterChart,     // series
+ *    GridComponent, LegendComponent, TooltipComponent, DatasetComponent,
+ *    MarkLineComponent, MarkAreaComponent, TitleComponent,
+ *    CanvasRenderer,                                   // renderer
+ *  ]);
+ *  ```
+ *
+ *  CanvasRenderer, not SVG. The kit's test/a11y contract is the visually-hidden DOM `summary` a chart
+ *  renders alongside its canvas — a real element in DOM order that a screen reader reads and a jsdom
+ *  test asserts on. That contract holds for every chart regardless of renderer, whereas "render SVG so
+ *  jsdom can see the marks" buys a test target for the marks only, at the cost of the renderer that
+ *  scales past a few thousand of them. One answer, and it is also the accessibility answer.
+ */
+export declare const DASH_KIT_ECHARTS_PARTS: readonly ["BarChart", "LineChart", "PieChart", "ScatterChart", "GridComponent", "LegendComponent", "TooltipComponent", "DatasetComponent", "MarkLineComponent", "MarkAreaComponent", "TitleComponent", "CanvasRenderer"];
+
 /** The `[capabilities] request` list matching {@link DASH_KIT_READ_SCOPE}. Four, not five — the batch
  *  verb rides `mcp:viz.query:call` (above). Exported so an author can paste both halves and cannot
  *  accidentally request a capability that does not exist. */
-export declare const DASH_KIT_READ_CAPS: readonly ["mcp:viz.query:call", "mcp:series.read:call", "mcp:series.latest:call", "mcp:series.find:call"];
+export declare const DASH_KIT_READ_CAPS: readonly ["mcp:viz.query:call", "mcp:series.read:call", "mcp:series.latest:call", "mcp:series.find:call", "mcp:panel.get:call"];
 
 /** The `[ui] scope` a kit-built read page needs. Paste verbatim into `extension.toml`:
  *
@@ -248,7 +335,7 @@ export declare const DASH_KIT_READ_CAPS: readonly ["mcp:viz.query:call", "mcp:se
  * Note the asymmetry: five scope entries, four caps. `viz.query_batch` is the aliased one (above).
  * An admin may approve a SUBSET — the effective grant is the intersection, and every kit surface whose
  * verb was declined renders a **denied** state naming it, never an empty chart. */
-export declare const DASH_KIT_READ_SCOPE: readonly ["viz.query", "viz.query_batch", "series.read", "series.latest", "series.find"];
+export declare const DASH_KIT_READ_SCOPE: readonly ["viz.query", "viz.query_batch", "series.read", "series.latest", "series.find", "panel.get"];
 
 /** Provide the per-visit `QueryClient` + the current `ws` to the dashboard subtree. Keyed by the caller
  *  on `ws` (see `DashboardView`) so a workspace switch remounts with a fresh client and fresh keys. */
@@ -341,6 +428,90 @@ export declare const DEFAULT_TTL_S = 120;
 /** A client whose reads reject — models a workspace granted no `insight.list` cap. The hooks must
  *  surface this as an honest error, never a fabricated list. */
 export declare function denyClient(): InsightsClient;
+
+export declare function EChart({ option, ariaLabel, summary, className, onReady, bare }: EChartProps): JSX_2.Element;
+
+export declare interface EChartProps {
+    /** Build the echarts option from the RESOLVED theme. A function (not a plain option) so the chart
+     *  re-derives its colours when the host flips light/dark. */
+    option: (theme: EchartsTheme) => object;
+    ariaLabel: string;
+    /** A visually-hidden, DOM-order summary of what the canvas draws — the a11y text AND the render
+     *  target unit tests assert. See the header. */
+    summary?: ReactNode;
+    className?: string;
+    /** Called once the instance is live, for the events an OPTION cannot express (the hovered data index
+     *  being the one that matters). Return a disposer and it runs before teardown.
+     *
+     *  NEVER fires under jsdom: `init` throws there, so a consumer must treat "not called" as normal. */
+    onReady?: (chart: EChartsLike) => (() => void) | void;
+    /** Render WITHOUT the `role="img"` wrapper, for a caller that already provides one. Two nested
+     *  `role="img"` elements make `[role="img"]` ambiguous for assistive tech and for every test. */
+    bare?: boolean;
+}
+
+/** The slice of the echarts instance this wrapper touches. Kept structural rather than importing
+ *  echarts' type, because the module is dynamic-imported and must not become a static dependency. */
+export declare interface EChartsLike {
+    setOption: (o: unknown, notMerge: boolean) => void;
+    resize: () => void;
+    dispose: () => void;
+    on: (event: string, handler: (payload: never) => void) => void;
+    off: (event: string) => void;
+}
+
+export declare type EchartsLoader = () => Promise<EchartsNamespace>;
+
+/** The slice of the echarts namespace the kit touches. Structural rather than imported, because the
+ *  module is dynamic-imported and must not become a static dependency of this file. */
+export declare interface EchartsNamespace {
+    init: (host: HTMLElement) => unknown;
+}
+
+/** The resolved chart chrome for the current theme. Read once per render of a chart (cheap) and again
+ *  whenever the theme flips — `EChart` re-reads on the documentElement class mutation. */
+export declare interface EchartsTheme {
+    palette: string[];
+    accent: string;
+    text: string;
+    muted: string;
+    border: string;
+    surface: string;
+    /** The sequential ramp a heatmap / value-colored chart interpolates across (cool → hot). */
+    ramp: string[];
+    /** The SINGLE-HUE sequential ramps, keyed by hue name. See {@link SequentialRamp}.
+     *
+     *  OPTIONAL on purpose: `echartsTheme()` always fills it, but a hand-built theme (every
+     *  `plotOption/*.test.ts` fixture) predates this field, and consumers already fall back to
+     *  `ramp`. Making it required would force a mechanical edit through a dozen fixtures to buy
+     *  nothing — the fallback is the real contract. */
+    ramps?: Record<SequentialRamp, string[]>;
+}
+
+export declare function echartsTheme(): EchartsTheme;
+
+/** One renderable panel: a spec plus grid geometry. Opaque to the kit beyond `i`. */
+export declare interface EmbedCell extends Record<string, unknown> {
+    /** The cell key. Stable per placement. */
+    i: string;
+}
+
+/** A full panel record as `panel.get` returns it. */
+export declare interface EmbedPanel {
+    id: string;
+    title: string;
+    spec: EmbedPanelSpec;
+    [k: string]: unknown;
+}
+
+/** A panel's non-layout half — what `panel.get` returns under `spec`. Opaque to the kit. */
+export declare type EmbedPanelSpec = Record<string, unknown>;
+
+/** The dashboard time range a page may pass down. Opaque — the host reads its own shape. */
+export declare type EmbedRange = Record<string, unknown>;
+
+/** The resolved variable scope. Opaque for the same reason. */
+export declare type EmbedScope = Record<string, unknown>;
 
 export declare type Endpoint = 
 /** `now`, `now±<n><unit>`, optional `/<unit>` snap (truncate to the start of that unit). */
@@ -512,6 +683,13 @@ export declare interface FreshnessInputs {
 }
 
 export declare const FreshnessProvider: Provider<number>;
+
+/** The registered renderer, or `undefined` when the host registered none (a bare test page, a host
+ *  that does not ship widgets). Callers must render an honest state rather than an empty box. */
+export declare function getPanelRenderer(): PanelRenderer | undefined;
+
+/** Apply the registered hydrator, or pass the spec through untouched. */
+export declare function hydrateSpec(spec: EmbedPanelSpec): EmbedPanelSpec;
 
 /** Inbox rows → catalog entries. */
 export declare function inboxEntries(rows: InboxRow[]): CatalogEntry[];
@@ -783,6 +961,18 @@ export declare interface KVProps {
  *  labelling never throws and never lies about what the URL says. */
 export declare function labelOf(from: string, to?: string): string;
 
+/** The shared legend chrome. */
+export declare function legendChrome(theme: EchartsTheme): {
+    textStyle: {
+        color: string;
+        fontSize: number;
+    };
+    inactiveColor: string;
+    icon: "roundRect";
+    itemWidth: number;
+    itemHeight: number;
+};
+
 /** The generous stale window for list-class reads (source picker bundle, datasource list, flow roster) —
  *  they rarely change mid-visit, so a burst of consumers collapses to one fetch and re-reads only after
  *  this window (or an explicit invalidate on workspace switch / editor open where a fresh list matters). */
@@ -825,6 +1015,9 @@ export declare function liveEntries(seriesNames: string[]): SourceEntry[];
  *  the moment it lands instead of waiting for every loader. Late calls after the caller is
  *  unmounted/cancelled are the caller's concern (it passes a `publish` that no-ops on cancel). */
 export declare function loadCatalog(loaders: SourceLoaders, publish?: (merge: (current: CatalogSections) => CatalogSections) => void): Promise<CatalogSections>;
+
+/** Load (and register) the engine. Every kit chart goes through here. */
+export declare function loadEcharts(): Promise<EchartsNamespace>;
 
 /** Run every loader (deny-tolerant; absent loader ⇒ absent input) and fold the results into picker
  *  entries. The Flows group composes `flows.list` + `flows.nodes` + a per-flow `flows.get` — the
@@ -1031,6 +1224,25 @@ export declare interface PageCursor {
 /** The reusable resizable side panel — ce InspectPanel look on shadcn primitives. */
 export declare function Panel({ open, onOpenChange, title, description, headerAside, footer, "aria-label": ariaLabel, initialWidth, minWidth, maxWidth, className, children, }: PanelProps): JSX_2.Element;
 
+/** Render one panel outside any grid. */
+export declare function PanelEmbed(props: PanelEmbedProps): JSX_2.Element;
+
+export declare interface PanelEmbedProps {
+    /** The workspace to read in. Defaults to the `KitProvider`'s. */
+    ws?: string;
+    /** A library panel id — `panel:{id}` or bare. Fetched unless `cell`/`spec` is given. */
+    id?: string;
+    /** A spec the caller already holds — skips the fetch. Needs `id` for the cell key. */
+    spec?: EmbedPanelSpec;
+    /** A ready cell — rendered directly. */
+    cell?: EmbedCell;
+    range?: EmbedRange;
+    scope?: EmbedScope;
+    /** Bump to force a re-read. */
+    refreshKey?: number;
+    className?: string;
+}
+
 export declare interface PanelProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -1054,6 +1266,23 @@ export declare interface PanelProps {
     className?: string;
     /** The scrollable body — the host stacks <Section>/<PropTable>/<KV> here. */
     children: ReactNode;
+}
+
+export declare type PanelRenderer = (req: PanelRenderRequest) => ReactNode;
+
+/** What the host is asked to draw. Deliberately the SAME arguments a dashboard grid hands its cells —
+ *  an embedded panel is not a different kind of panel, it is the same panel outside a grid. */
+export declare interface PanelRenderRequest {
+    cell: EmbedCell;
+    /** The workspace the panel reads in. A de-dup/scoping key, never the security wall. */
+    ws: string;
+    /** The dashboard time range, if the page has one. Absent ⇒ the panel's own/default window. */
+    range?: EmbedRange;
+    /** The resolved variable scope. Absent ⇒ the host's empty scope — an embed DEGRADES rather than
+     *  demanding dashboard context. */
+    scope?: EmbedScope;
+    /** Bumped to force a re-read (an auto-refresh tick). */
+    refreshKey?: number;
 }
 
 /** The declared type of a rule param — steers the host's input control + value coercion (mirrors the
@@ -1258,6 +1487,18 @@ export declare function rangeTimezone(dashboardTz?: string, prefsTz?: string, zo
  *  `BUILDER_SOURCE_GROUPS`). Exported so every consumer renders ONE canonical label set. */
 export declare const READ_SOURCE_GROUPS: SourceGroup[];
 
+export declare type ReadFailure = "denied" | "unavailable" | "error";
+
+/** Register the host's widget renderer. Call once at boot, before any embed mounts.
+ *
+ *  The shell registers its `WidgetHost` — the ONE shipped widget path — so an extension page embedding
+ *  a panel gets the shell's real chart code, not a copy of it. */
+export declare function registerPanelRenderer(renderer: PanelRenderer): void;
+
+/** Register the host's stored-spec → renderable-spec transform. Call once at boot, beside
+ *  {@link registerPanelRenderer}. */
+export declare function registerSpecHydrator(hydrate: SpecHydrator): void;
+
 export declare interface Resizable {
     /** Current width in px. */
     width: number;
@@ -1413,6 +1654,18 @@ export declare function selectionOf(entry: SourceEntry): {
     viewKey?: string;
 };
 
+/** The sequential ramps a value-tinted chart can interpolate across.
+ *
+ *  `spectral` is the six-token cyan→rose rainbow, and it is the right default for a measure whose
+ *  high end genuinely IS the alarming end (energy intensity, water). It is the WRONG one for a
+ *  measure that never leaves a safe band: an office at 394–443 ppm CO2 painted across a rainbow
+ *  reads as a severity scale and invents urgency the data does not carry. The single-hue ramps say
+ *  "more of the same thing" rather than "worse".
+ *
+ *  Each is ONE existing token stepped by opacity — never a second palette, so they track the theme
+ *  and the accent hue automatically. */
+export declare type SequentialRamp = "spectral" | "accent" | "blue" | "green" | "amber";
+
 /** Series names → catalog entries (one per series). */
 export declare function seriesCatalogEntries(names: string[]): CatalogEntry[];
 
@@ -1422,6 +1675,13 @@ export declare function seriesEntries(seriesNames: string[]): SourceEntry[];
 /** `series.read` backfill — one entry per (ws, series). N cells on one series share one read (scope goal 4).
  *  The live SSE tail stays OUTSIDE the cache (state vs motion) — this keys only the history backfill. */
 export declare function seriesReadKey(ws: string, series: string): readonly ["series.read", string, string];
+
+/** Point the kit's charts at a DIFFERENT registration module — a host whose chart vocabulary is wider
+ *  than {@link DASH_KIT_ECHARTS_PARTS}. Pass a thunk that dynamic-imports; the engine stays lazy.
+ *
+ *  Call it once, at boot, before any chart mounts. Registering is additive and idempotent in echarts,
+ *  so a host module that registers the kit's parts plus its own is the normal shape. */
+export declare function setEchartsLoader(next: EchartsLoader): void;
 
 export declare type Severity = "info" | "warning" | "critical";
 
@@ -1446,6 +1706,63 @@ export declare function severityRank(s: Severity): number;
 
 /** Severity → tone key. */
 export declare function severityTone(s: Severity): Tone;
+
+export declare function ShareBar({ segments, label, height, className }: ShareBarProps): JSX_2.Element;
+
+export declare interface ShareBarProps {
+    segments: ShareSegment[];
+    /** Describe the bar to assistive tech. Omitted ⇒ the bar is `aria-hidden` — the right default when
+     *  the figures are already text beside it (see the header). */
+    label?: string;
+    /** Bar thickness. The default is the roster-row strip; a headline band passes something taller. */
+    height?: number | string;
+    className?: string;
+}
+
+export declare function ShareLegend({ rows, label, className, }: {
+    rows: ShareLegendRow[];
+    /** Names the list for assistive tech — this IS the accessible rendering of the bar's data. */
+    label: string;
+    className?: string;
+}): JSX_2.Element;
+
+export declare interface ShareLegendRow {
+    key: string;
+    label: string;
+    /** A resolved colour for the swatch. */
+    color?: string;
+    /** A CSS class carrying the swatch colour instead — see `ShareSegment.className`. */
+    className?: string;
+    /** The primary figure, already formatted by the caller — the kit does not decide a locale or a unit. */
+    value: string;
+    /** The secondary figure (usually the share). Omitted ⇒ one number. */
+    secondary?: string;
+    /** Extra context shown on hover — what this state actually means. */
+    title?: string;
+    hatch?: boolean;
+    /** Rendered at the end of the row (a link into the rows behind the figure). */
+    action?: ReactNode;
+}
+
+export declare interface ShareSegment {
+    key: string;
+    value: number;
+    /** A resolved colour — a host token read through `tokenColor`, or any CSS colour string. */
+    color?: string;
+    /** A CSS class carrying the colour instead, for a caller whose vocabulary is already a set of
+     *  utility classes.
+     *
+     *  Prefer this. A DOM bar can take its colour from a CLASS, which is the whole advantage it has over
+     *  a canvas: it follows a host re-theme through the cascade for free, with no resolution step, no
+     *  `getComputedStyle`, and — the one that matters when thirty of these render in a roster — no
+     *  per-bar MutationObserver watching for the theme to change. Resolve a colour to a string only when
+     *  something downstream genuinely cannot read a class. */
+    className?: string;
+    /** Hover text — usually the value and what it means, since the bar itself carries no number. */
+    title?: string;
+    /** Overlay a diagonal hatch so this segment stays separable from its neighbour without colour. */
+    hatch?: boolean;
+}
 
 /** The phone-width label (mobile-friendly-ui §4.2): a token label is already short; an ISO-day pair
  *  compresses to a year-less `Jul 27 – Aug 3` (the full pair is ~200px and clips at 390px). Parsed at
@@ -1621,6 +1938,18 @@ export declare interface SourceSelection {
     viewKey?: string;
 }
 
+/** Restore a stored spec into its renderable form. */
+export declare type SpecHydrator = (spec: EmbedPanelSpec) => EmbedPanelSpec;
+
+/** A spec + an id → a renderable cell. Default geometry is a full-width band: an embed has no grid to
+ *  take its size from, and the host sizes the container anyway. */
+export declare function specToCell(id: string, spec: EmbedPanelSpec, layout?: {
+    x?: number;
+    y?: number;
+    w?: number;
+    h?: number;
+}): EmbedCell;
+
 /** The id of the "SQL query" entry — the visual SQL builder + raw-SQL source over `store.query`. */
 export declare const SQL_SOURCE_ID = "sql:query";
 
@@ -1647,6 +1976,18 @@ export declare type StepUnit = "s" | "m" | "h" | "d" | "w" | "M" | "q" | "y";
  *  in a way that leaks into a snapshot). */
 export declare function timeAgo(ts: number, now?: number): string;
 
+/** Resolve one HSL-triplet token (`--chart-1` → `"217 78% 48%"`) into a canvas-usable color.
+ *
+ *  The COMMAS are load-bearing. Our tokens are CSS Color 4 space-separated triplets, which the browser
+ *  understands everywhere — but echarts does not hand colors straight to the canvas: zrender PARSES
+ *  them itself (to interpolate a visualMap ramp, to derive an emphasis shade), and its parser only
+ *  knows the legacy `hsl(h, s%, l%)` / `rgb(...)` / hex forms. A space-separated triplet parses as
+ *  null and every mark paints BLACK — the first thing this shipped as, and invisible to jsdom.
+ *
+ *  Falls back to a neutral grey when the token is missing (SSR / jsdom / a host that defines no chart
+ *  tokens) so a chart still draws something honest instead of throwing. */
+export declare function tokenColor(name: string, alpha?: number): string;
+
 /** A tone KEY per severity — a stable, look-free token a host maps to its own palette. The package UI
  *  maps `critical → destructive`, `warning → warning`, `info → accent-2`; a host may map differently. */
 export declare type Tone = "destructive" | "warning" | "accent-2" | "default" | "success";
@@ -1660,6 +2001,17 @@ export declare type ToolCall = (tool: string, args?: Record<string, unknown>) =>
 /** Normalise either accepted transport shape to the bare call. A bridge's `call` is generic; the kit's
  *  `ToolCall` deliberately resolves `unknown` so no decode is assumed at the seam. */
 export declare function toolCallOf(transport: KitTransport): ToolCall;
+
+/** The shared tooltip surface — the popover token, a soft ring, the app's text color. */
+export declare function tooltipChrome(theme: EchartsTheme): {
+    backgroundColor: string;
+    borderColor: string;
+    textStyle: {
+        color: string;
+        fontSize: number;
+    };
+    extraCssText: string;
+};
 
 /** Lazy catalog. `loaders` is the host's read seam; `ws` keys the re-init (the workspace switch). The
  *  initial idle record is computed once per `loaders` reference via `useState`'s lazy initializer —

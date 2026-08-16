@@ -34,6 +34,10 @@ export const DASH_KIT_READ_SCOPE = [
   "series.read",
   "series.latest",
   "series.find",
+  // Tier 2b: `PanelEmbed`'s library mode reads a curated panel by id. Without this entry the embed's
+  // `panel.get` is rejected client-side as `out_of_scope` and the page renders a denial over a panel
+  // the viewer can actually read — the same silent-under-render trap the batch verb has.
+  "panel.get",
 ] as const satisfies readonly string[];
 
 /** The `[capabilities] request` list matching {@link DASH_KIT_READ_SCOPE}. Four, not five — the batch
@@ -44,4 +48,8 @@ export const DASH_KIT_READ_CAPS = [
   "mcp:series.read:call",
   "mcp:series.latest:call",
   "mcp:series.find:call",
+  // Needed only by a page that embeds a LIBRARY panel (`PanelEmbed id=…`); an inline-cell embed does
+  // not read the record. Requested anyway rather than left to be discovered: an admin who does not want
+  // it declines it, and the embed renders an honest denial naming the verb.
+  "mcp:panel.get:call",
 ] as const satisfies readonly string[];

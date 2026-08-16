@@ -7,6 +7,8 @@ import "./dash-kit.css";
 // ── Tier 0: the whole integration ────────────────────────────────────────────────────────────────
 export { makeKitClient, makeSourceLoaders, makeInsightsClient, toolCallOf } from "./client/makeKitClient";
 export { KitDeniedError, isKitDenied, isOutOfScope } from "./client/types";
+export { classifyReadFailure } from "./client/failure";
+export type { ReadFailure } from "./client/failure";
 export type {
   CallLike,
   KitClient,
@@ -138,6 +140,16 @@ export * from "./source-picker";
 export * from "./insights";
 export * from "./panel";
 export * from "./nav-rail";
+
+// ── Tier 2a: the chart substrate ─────────────────────────────────────────────────────────────────
+// Extracted from the rubix-ai shell, which is where the mature incumbents were. `echarts` is a PEER,
+// lazy-loaded inside the wrapper — a page with no chart downloads no engine. See `charts/index.ts`.
+export * from "./charts";
+
+// ── Tier 2b: the embed ───────────────────────────────────────────────────────────────────────────
+// One panel rendered outside a grid, from an extension page — by the HOST's real renderer, not a kit
+// lookalike. See `embed/panelRenderer.ts` for the seam and why it is a cross-bundle global.
+export * from "./embed";
 
 // ── The transport vocabulary the injected seams speak ────────────────────────────────────────────
 // `export *` above already re-exports every type module (`source-picker/types`, `insights/types`) —

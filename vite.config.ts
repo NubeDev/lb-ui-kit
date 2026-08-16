@@ -41,6 +41,11 @@ export default defineConfig({
         "@radix-ui/react-tooltip",
         "@radix-ui/react-slot",
         "lucide-react",
+        // echarts is a PEER and ~1MB. Bundling it here would push that megabyte into every consumer,
+        // including the ones whose page mounts no chart. Externalised so there is exactly ONE copy on
+        // the page, resolved by the consumer, and so the wrapper's dynamic import stays a real code
+        // split rather than a slice of the kit's own bundle.
+        /^echarts(\/|$)/,
       ],
       output: {
         assetFileNames: "dash-kit.[ext]",
