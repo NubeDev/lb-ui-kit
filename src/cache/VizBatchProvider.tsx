@@ -16,7 +16,12 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 
 import { useKitOptional } from "../provider/KitProvider";
-import { makeVizBatchLoader, type BatchCall, type VizBatchLoader } from "./vizBatchLoader";
+import {
+  makeVizBatchLoader,
+  type BatchCall,
+  type BatchStreamCall,
+  type VizBatchLoader,
+} from "./vizBatchLoader";
 
 const VizBatchContext = createContext<VizBatchLoader | null>(null);
 
@@ -37,10 +42,20 @@ export function useVizBatchLoader(): VizBatchLoader | null {
  *  provider" — a coupling the injected seam exists to avoid. It is not hypothetical: the shell's
  *  `useVizQuery` tests wrap a subtree in this provider and nothing else, and a hard `useKit()` here
  *  threw in all seven of them. */
-export function VizBatchProvider({ call, children }: { call?: BatchCall; children: ReactNode }) {
+export function VizBatchProvider({
+  call,
+  streamCall,
+  children,
+}: {
+  call?: BatchCall;
+  /** The optional STREAMED transport (§C): the same one batch, delivered per panel as each resolves.
+   *  A host without a streaming route omits it and nothing changes. */
+  streamCall?: BatchStreamCall;
+  children: ReactNode;
+}) {
   const kit = useKitOptional();
   const loader = useMemo(() => {
-    if (call) return makeVizBatchLoader(call);
+    if (call) return makeVizBatchLoader(call, { streamCall });
     if (!kit) {
       // Neither a call nor a client. Throwing beats defaulting to a no-op transport, which would
       // render every panel in the subtree empty — indistinguishable from "the query returned nothing".
@@ -49,7 +64,7 @@ export function VizBatchProvider({ call, children }: { call?: BatchCall; childre
       );
     }
     const client = kit.client;
-    return makeVizBatchLoader((tool, args) => client.call(tool, args));
-  }, [call, kit]);
+    return makeVizBatchLoader((tool, args) => client.call(tool, args), { streamCall });
+  }, [call, kit, streamCall]);
   return <VizBatchContext.Provider value={loader}>{children}</VizBatchContext.Provider>;
 }

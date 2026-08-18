@@ -10,7 +10,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 
-import { makeVizBatchLoader, MAX_PANELS } from "./vizBatchLoader";
+import { makeVizBatchLoader, MAX_PANELS, type BatchItem } from "./vizBatchLoader";
 
 /** A frames result for panel `p`, tagged so a slice can be traced back to its panel by index. */
 const frameFor = (tag: string) => ({ frames: [{ refId: "A", tag }], rows: [{ tag }] });
@@ -104,5 +104,104 @@ describe("makeVizBatchLoader — coalescing", () => {
     expect(call).toHaveBeenCalledTimes(2); // 64 + 1
     expect((call.mock.calls[0][1].panels as unknown[]).length).toBe(MAX_PANELS);
     expect((call.mock.calls[1][1].panels as unknown[]).length).toBe(1);
+  });
+});
+
+// ── §C: the STREAMED transport ─────────────────────────────────────────────────────────────────────
+// The claims that make progressive paint safe:
+//   - Injected `streamCall` wins over the batch verb, and each panel settles on ITS item (not the wave).
+//   - A panel that arrives EARLY resolves before its slow siblings — the whole point of the transport.
+//   - A per-item error/denied still rejects just that load.
+//   - A stream that ends short rejects only the panels that never arrived (an honest transport error).
+//   - A missing route retires streaming for the visit and falls back to the batch verb, without
+//     re-requesting the panels the stream already delivered.
+describe("makeVizBatchLoader — streamed transport", () => {
+  it("settles each panel as its item arrives, ahead of slower siblings", async () => {
+    const gate: Array<() => void> = [];
+    const streamCall = vi.fn(async (_args: Record<string, unknown>, onItem: (i: number, item: BatchItem) => void) => {
+      onItem(1, frameFor("fast"));
+      await new Promise<void>((r) => gate.push(r));
+      onItem(0, frameFor("slow"));
+    });
+    const call = vi.fn(async () => ({ results: [] }));
+    const loader = makeVizBatchLoader(call, { windowMs: 1, streamCall });
+
+    const slow = loader.load({ id: "slow" });
+    const fast = loader.load({ id: "fast" });
+
+    // The fast panel resolves while the stream is still open — no batch verb call at all.
+    expect(await fast).toEqual({ frames: [{ refId: "A", tag: "fast" }], rows: [{ tag: "fast" }] });
+    expect(loader.streaming).toBe(true);
+    expect(call).not.toHaveBeenCalled();
+
+    gate.forEach((release) => release());
+    expect((await slow).rows).toEqual([{ tag: "slow" }]);
+  });
+
+  it("rejects only the panel whose item is an error", async () => {
+    const streamCall = async (_args: Record<string, unknown>, onItem: (i: number, item: BatchItem) => void) => {
+      onItem(0, { status: "error", message: "bad sql" });
+      onItem(1, frameFor("ok"));
+    };
+    const loader = makeVizBatchLoader(vi.fn(), { windowMs: 1, streamCall });
+
+    const bad = loader.load({ id: "bad" });
+    const good = loader.load({ id: "good" });
+
+    await expect(bad).rejects.toThrow("bad sql");
+    expect((await good).rows).toEqual([{ tag: "ok" }]);
+  });
+
+  it("rejects the panels a truncated stream never delivered", async () => {
+    const streamCall = async (_args: Record<string, unknown>, onItem: (i: number, item: BatchItem) => void) => {
+      onItem(0, frameFor("delivered"));
+    };
+    const loader = makeVizBatchLoader(vi.fn(), { windowMs: 1, streamCall });
+
+    const delivered = loader.load({ id: "a" });
+    const dropped = loader.load({ id: "b" });
+
+    expect((await delivered).rows).toEqual([{ tag: "delivered" }]);
+    await expect(dropped).rejects.toThrow(/stream ended/i);
+  });
+
+  it("falls back to the batch verb when the route is absent, and retires streaming for the visit", async () => {
+    const streamCall = vi.fn(async () => {
+      throw new Error("404 not found");
+    });
+    const call = vi.fn(async (_tool: string, args: Record<string, unknown>) => ({
+      results: (args.panels as unknown[]).map((_, i) => frameFor(`v${i}`)),
+    }));
+    const loader = makeVizBatchLoader(call, { windowMs: 1, streamCall });
+
+    const [a, b] = await Promise.all([loader.load({ id: "a" }), loader.load({ id: "b" })]);
+    expect(a.rows).toEqual([{ tag: "v0" }]);
+    expect(b.rows).toEqual([{ tag: "v1" }]);
+    expect(loader.streaming).toBe(false);
+    expect(call).toHaveBeenCalledWith("viz.query_batch", expect.objectContaining({ panels: [{ id: "a" }, { id: "b" }] }));
+
+    // Wave 2: streaming is retired — the batch verb is used directly, the stream is not re-tried.
+    streamCall.mockClear();
+    await loader.load({ id: "c" });
+    expect(streamCall).not.toHaveBeenCalled();
+  });
+
+  it("re-batches only the panels a mid-stream failure left unsettled", async () => {
+    const streamCall = async (_args: Record<string, unknown>, onItem: (i: number, item: BatchItem) => void) => {
+      onItem(0, frameFor("streamed"));
+      throw new Error("connection reset");
+    };
+    const call = vi.fn(async (_tool: string, args: Record<string, unknown>) => ({
+      results: (args.panels as unknown[]).map(() => frameFor("recovered")),
+    }));
+    const loader = makeVizBatchLoader(call, { windowMs: 1, streamCall });
+
+    const first = loader.load({ id: "a" });
+    const second = loader.load({ id: "b" });
+
+    expect((await first).rows).toEqual([{ tag: "streamed" }]);
+    expect((await second).rows).toEqual([{ tag: "recovered" }]);
+    // Only the undelivered panel is re-sent — the streamed one is not queried twice.
+    expect(call).toHaveBeenCalledWith("viz.query_batch", expect.objectContaining({ panels: [{ id: "b" }] }));
   });
 });
