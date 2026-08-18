@@ -66,8 +66,8 @@ export { useCatalog } from "./useCatalog";
 
 // UI — the props-driven grouped <select>, plus the shared grouping primitive + canonical group lists a
 // host reuses when it renders its own <select> (shadcn Select / a token-classed native select).
-export { SourcePicker, PickerGroup, READ_SOURCE_GROUPS, BUILDER_SOURCE_GROUPS } from "./SourcePicker";
-export type { SourcePickerProps, SourceGroup } from "./SourcePicker";
+export { SourcePicker, PickerGroup, READ_SOURCE_GROUPS, BUILDER_SOURCE_GROUPS } from "./SourcePicker.tsx";
+export type { SourcePickerProps, SourceGroup } from "./SourcePicker.tsx";
 
 // UI — the SEARCHABLE combobox variant (type-to-filter grouped popover). Optional richer alternative to
 // the `<select>`; same model + tokens. A host that wants a plain select keeps `SourcePicker`.

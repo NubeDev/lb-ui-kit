@@ -11,7 +11,7 @@
 import { useMemo, useRef, useState } from "react";
 
 import { selectionOf, type SourceEntry } from "./sourcePicker";
-import { READ_SOURCE_GROUPS, type SourceGroup } from "./SourcePicker";
+import { READ_SOURCE_GROUPS, type SourceGroup } from "./SourcePicker.tsx";
 import type { SourceSelection } from "./types";
 
 export interface SourceComboboxProps {
