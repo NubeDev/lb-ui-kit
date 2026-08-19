@@ -1,13 +1,33 @@
+import { BUILDER_SOURCE_GROUPS } from './SourcePicker.tsx';
+import { buildSourceEntries } from './sourcePicker';
 import { Context } from 'react';
+import { extensionEntries } from './sourcePicker';
+import { extWidgetEntries } from './sourcePicker';
+import { flowsEntries } from './sourcePicker';
 import { ForwardRefExoticComponent } from 'react';
 import { JSX as JSX_2 } from 'react';
+import { liveEntries } from './sourcePicker';
 import { LucideProps } from 'lucide-react';
 import { Persister } from '@tanstack/react-query-persist-client';
+import { PickerGroup } from './SourcePicker.tsx';
 import { Provider } from 'react';
 import { QueryClient } from '@tanstack/react-query';
+import { queryEntries } from './sourcePicker';
 import type * as React_2 from 'react';
 import { ReactNode } from 'react';
+import { READ_SOURCE_GROUPS } from './SourcePicker.tsx';
 import { RefAttributes } from 'react';
+import { rulesEntries } from './sourcePicker';
+import { selectionOf } from './sourcePicker';
+import { seriesEntries } from './sourcePicker';
+import { SourceEntry } from './sourcePicker';
+import { SourceGroup } from './SourcePicker.tsx';
+import { SourceInputs } from './sourcePicker';
+import { SourcePicker } from './SourcePicker.tsx';
+import { SourcePickerProps } from './SourcePicker.tsx';
+import { SQL_SOURCE_ID } from './sourcePicker';
+import { sqlSourceEntry } from './sourcePicker';
+import { widgetIdOf } from './sourcePicker';
 
 /** A write action — the tool a switch/slider/button calls on interaction. `argsTemplate` carries a
  *  `{{value}}` slot the interaction fills. */
@@ -62,6 +82,23 @@ export declare function bareId(id: string): string;
  *  provider can bind a bridge leashed to `viz.query`/`viz.query_batch`. */
 export declare type BatchCall = (tool: string, args: Record<string, unknown>) => Promise<unknown>;
 
+/** One per-panel result of `viz.query_batch` — either the query result, or a per-item failure. */
+declare type BatchItem = (VizQueryResult & {
+    status?: undefined;
+}) | {
+    status: "error" | "denied";
+    message?: string;
+};
+
+/** The STREAMED transport seam (§C). Given the same `{panels, now, cache?}` args the batch verb takes,
+ *  the host calls `onItem(index, item)` for each panel as it arrives and resolves when the stream ends.
+ *  Rejecting means "this transport is unavailable" — the loader then falls back for that wave (and, when
+ *  the failure reads as an absent route, for the rest of the visit).
+ *
+ *  Transport-blind on purpose: the kit never learns the gateway's URL, the auth header, or the wire
+ *  format. A host that has no streaming route simply doesn't inject this. */
+declare type BatchStreamCall = (args: Record<string, unknown>, onItem: (index: number, item: BatchItem) => void) => Promise<void>;
+
 /** The sentinel a stored preference uses for "no stated preference" — treated as absent, not as a
  *  zone name. Empty string means the same thing. */
 export declare const BROWSER_TZ = "browser";
@@ -71,15 +108,9 @@ export declare const BROWSER_TZ = "browser";
  *  failure mode this exists to avoid. */
 export declare function browserZone(): string;
 
-/** The builder's group list — the read groups plus the `action` (write control) group, ordered as the
- *  widget builder shows them (action before widget). A host authoring controls uses this. */
-export declare const BUILDER_SOURCE_GROUPS: SourceGroup[];
+export { BUILDER_SOURCE_GROUPS }
 
-/** Assemble the whole picker from loader results. Series/live from `series`; extension + widget from
- *  `extensions`; flows from `flows`+`descriptors`; the SQL entry is always offered (the host's parse
- *  gate + ws wall make it safe regardless of which tables exist). Datasources are the DROPDOWN roster
- *  (`SourceInputs.datasources`), surfaced by the UI separately from these entries. */
-export declare function buildSourceEntries(inputs: SourceInputs): SourceEntry[];
+export { buildSourceEntries }
 
 /** The prefix that marks the BUILT-IN namespace. A `__`-led name resolves from `VarScope.builtins`, so a
  *  user variable named there is permanently shadowed — which is why `validateVariables` rejects it. */
@@ -580,9 +611,7 @@ export declare interface EvidenceSeries {
     unit?: string;
 }
 
-/** Installed-extension TOOL entries — split an extension's `ui`/`widgets[]` scope tools into READ
- *  sources and WRITE actions by name heuristic. (A tile's finished-widget entry is `extWidgetEntries`.) */
-export declare function extensionEntries(rows: ExtRow[]): SourceEntry[];
+export { extensionEntries }
 
 /** Every distinct variable name referenced in `template` (in first-seen order), built-ins included. */
 export declare function extractVarNames(template: string): string[];
@@ -614,10 +643,7 @@ export declare interface ExtUi {
     options?: ExtWidgetOption[];
 }
 
-/** Packaged-tile entries — ONE per `row.widgets[]` `[[widget]]`. Selecting it yields a
- *  `view: ext:<id>/<widget>` (the tile owns its data via `scope ∩ grant`). A disabled ext contributes
- *  none. The `viewKey` uses the SAME `widgetIdOf` slug the renderer parses. */
-export declare function extWidgetEntries(rows: ExtRow[]): SourceEntry[];
+export { extWidgetEntries }
 
 /** One manifest-declared widget option def (mirrors the node's `ExtUiOption`) — the shape the host
  *  editor renders. Opaque relay data; the picker package never interprets `control`/`scope`. */
@@ -655,11 +681,7 @@ export declare interface FlowNode {
  *  node/port/path CLIENT-SIDE from the shared whole-flow read (scope goal 4). */
 export declare function flowNodeStateKey(ws: string, flowId: string, tick: number): readonly ["flows.node_state", string, string, number];
 
-/** Flows entries — one per (flow, node, INPUT/OUTPUT port). An INPUT port → a write Action
- *  (`flows.inject`, a control drives the node's retained input); an OUTPUT port → a read Source
- *  (`flows.node_state`, extract this node's port). A node whose descriptor is missing contributes no
- *  ports (honest empty, never a guess). The author sees `flow › node › port (input|output)`. */
-export declare function flowsEntries(flows: Flow[], descriptors: NodeDescriptor[]): SourceEntry[];
+export { flowsEntries }
 
 /** A flow's summary (from `flows.list`). */
 export declare interface FlowSummary {
@@ -1002,8 +1024,7 @@ export declare interface ListQuery extends ListFilter {
     limit?: number;
 }
 
-/** Live (Zenoh) entries — each series also offers a live `series.watch` stream. */
-export declare function liveEntries(seriesNames: string[]): SourceEntry[];
+export { liveEntries }
 
 /** Run every loader the host wired (deny-tolerant per section). Each present loader resolves to
  *  `ready`/`denied` independently; absent loaders yield an absent (undefined) section. The
@@ -1315,14 +1336,7 @@ export declare function parseRangeExpr(raw: string): ParseOutcome;
  *  Returns the unsubscribe — call it on unmount so a dropped client stops writing. */
 export declare function persistQuickCache(client: QueryClient, ws: string): () => void;
 
-/** One `<optgroup>` for a source group, empty-tolerant (no section when it has no entries). Exported so a
- *  host that renders its own `<select>` (shadcn `Select`, a `FIELD`-classed native select) still uses the
- *  ONE grouping/labelling implementation — the `<optgroup>` carries no styling, so it drops into any select. */
-export declare function PickerGroup({ entries, group, label, }: {
-    entries: SourceEntry[];
-    group: SourceEntry["group"];
-    label: string;
-}): JSX_2.Element | null;
+export { PickerGroup }
 
 /** An insight summary row (the subset of `insight.list`'s `items[]` the catalog renders). Severity
  *  + status are optional so a host that only has `id`/`title` still renders. */
@@ -1391,13 +1405,7 @@ export declare interface PropTableProps {
  *  rides along so the explorer's renderer can sub-label a platform query vs a federated one. */
 export declare function queryCatalogEntries(rows: QuerySummary[]): CatalogEntry[];
 
-/** Saved-query entries — one per `query.list` row. Each ⇒ a read `query.run {id}` source: the host
- *  compiles the saved PRQL/raw text for the target's dialect and dispatches to `store.query`
- *  (platform) or `federation.query` (datasource), returning the SAME `{columns, rows}` shape every
- *  other tabular source yields. `query.run` COMPOSES the target's cap, it never widens it (rule 5):
- *  the caller needs `mcp:query.run:call` AND the underlying target cap, re-checked per call. Whether
- *  the saved text is currently valid is the author's concern — an honest failure if not. */
-export declare function queryEntries(queries: QuerySummary[]): SourceEntry[];
+export { queryEntries }
 
 /** A saved query's summary (the subset of `query.list`'s `queries[]` the picker renders) — a saved
  *  query is a read source (`query.run {id}` → `{columns, rows}`), so it mirrors `RuleSummary`.
@@ -1482,10 +1490,7 @@ export declare interface RangePreset {
  *  default is the browser zone, which is byte-identical to the shell's previous behaviour. */
 export declare function rangeTimezone(dashboardTz?: string, prefsTz?: string, zone?: ZoneResolver_2): string;
 
-/** The read/source groups, in display order, with their section labels. `action` is omitted (write
- *  controls are a separate authoring intent); a host that wants them passes its own list (see
- *  `BUILDER_SOURCE_GROUPS`). Exported so every consumer renders ONE canonical label set. */
-export declare const READ_SOURCE_GROUPS: SourceGroup[];
+export { READ_SOURCE_GROUPS }
 
 export declare type ReadFailure = "denied" | "unavailable" | "error";
 
@@ -1553,17 +1558,7 @@ export declare interface RuleParam {
     options?: string[];
 }
 
-/** Rules entries — one per saved rule. Each ⇒ a read `rules.run {rule_id}` source: the rule fetches
- *  from the gated sources, computes over the rows in the cage (the data-stdlib: time/stats/`Frame`),
- *  and RETURNS records the panel draws (rules-as-source-scope). A rule is the most general query — the
- *  picker offers it as one opaque tool source, re-gated at the host per call (`mcp:rules.run:call`);
- *  whether its output is chart-shaped is the rule author's concern, an honest failure if not.
- *
- *  `route:false` on the emitted source makes a panel run READ-ONLY (rules-for-widgets-scope slice 2):
- *  the host skips the `alert()` fan-out so a 30 s auto-refresh doesn't stamp a fresh Inbox item + a
- *  must-deliver Outbox entry on every repaint. The host composes the arg exactly like the params form;
- *  `viz.query` never learns the flag exists (it stays an opaque `{tool, args}` to the viz plane). */
-export declare function rulesEntries(rules: RuleSummary[]): SourceEntry[];
+export { rulesEntries }
 
 /** A saved rule's summary (the subset of `rules.list` the picker needs) — a rule is a read source
  *  (`rules.run {rule_id}` → records), so it mirrors `FlowSummary`. `params` (optional) are the rule's
@@ -1646,13 +1641,7 @@ export declare type SectionState<T> = {
     error: string;
 };
 
-/** Fold a chosen entry into a `SourceSelection` (drop the labelling fields; keep what the host stores). */
-export declare function selectionOf(entry: SourceEntry): {
-    id: string;
-    source?: Source;
-    action?: Action;
-    viewKey?: string;
-};
+export { selectionOf }
 
 /** The sequential ramps a value-tinted chart can interpolate across.
  *
@@ -1669,8 +1658,7 @@ export declare type SequentialRamp = "spectral" | "accent" | "blue" | "green" | 
 /** Series names → catalog entries (one per series). */
 export declare function seriesCatalogEntries(names: string[]): CatalogEntry[];
 
-/** Series entries — each ⇒ `series.read` of that series. */
-export declare function seriesEntries(seriesNames: string[]): SourceEntry[];
+export { seriesEntries }
 
 /** `series.read` backfill — one entry per (ws, series). N cells on one series share one read (scope goal 4).
  *  The live SSE tail stays OUTSIDE the cache (state vs motion) — this keys only the history backfill. */
@@ -1802,51 +1790,11 @@ export declare interface SourceComboboxProps {
     autoFocus?: boolean;
 }
 
-/** A friendly source entry the picker offers. `group` places it; `source`/`action`/`viewKey` is what
- *  selecting it yields (folded into a `SourceSelection` by the caller). */
-export declare interface SourceEntry {
-    /** Stable id for the option element + round-trip seeding. */
-    id: string;
-    /** The grouping origin (the picker's sections). `widget` is a packaged `[[widget]]` tile (a finished
-     *  widget the developer shipped — distinct from `extension`, which offers an extension's raw tools). */
-    group: "series" | "live" | "extension" | "action" | "sql" | "widget" | "flows" | "rules" | "queries";
-    /** What the author sees — never a raw tool name. */
-    label: string;
-    /** For a `widget` entry: the icon name the tile declared (lucide id). */
-    icon?: string;
-    /** For a `widget` entry: the `ext:<id>/<widget>` view key the tile resolves to. */
-    viewKey?: string;
-    /** For a `widget` entry: `true` if the tile is a frames-in DATA view (its manifest set `data = true`).
-     *  A data widget KEEPS the cell's `sources[]` (the shell resolves them to `ctx.data`) and shows the
-     *  Query + Field tabs; a non-data widget owns its own data and clears targets when picked. */
-    data?: boolean;
-    /** The resolved read source `{tool,args}` (read/scripted views + a control's optional self-read). */
-    source?: Source;
-    /** The resolved write action (control views) — `argsTemplate` gets a `{{value}}` slot filled later. */
-    action?: Action;
-    /** True if the entry's tool writes (drives the Action group + write-capable views). */
-    writes: boolean;
-    /** For a `rules` entry: the rule's declared params, so a host can render a params form around the
-     *  picker and fill the `rules.run` `args.params` (a rule with no params has none/empty). */
-    params?: RuleParam[];
-}
+export { SourceEntry }
 
-/** One entry in a picker's group list: which source `group` to render and its section label. */
-export declare type SourceGroup = {
-    group: SourceEntry["group"];
-    label: string;
-};
+export { SourceGroup }
 
-/** Inputs to `buildSourceEntries` — the loader results, each optional (absent → that group is absent). */
-export declare interface SourceInputs {
-    series?: string[];
-    extensions?: ExtRow[];
-    flows?: Flow[];
-    descriptors?: NodeDescriptor[];
-    datasources?: DatasourceRow[];
-    rules?: RuleSummary[];
-    queries?: QuerySummary[];
-}
+export { SourceInputs }
 
 /** The INJECTED read seam. The host implements each over its own transport (the shell delegates to
  *  its `@/lib/*` clients; an extension calls its `bridge.call`). Every function is allowed to reject /
@@ -1887,7 +1835,7 @@ export declare interface SourceLoaders {
     listInbox?: () => Promise<InboxRow[]>;
 }
 
-export declare function SourcePicker({ entries, value, onSelect, loading, groups, "aria-label": ariaLabel, className, }: SourcePickerProps): JSX_2.Element;
+export { SourcePicker }
 
 export declare interface SourcePickerData {
     entries: SourceEntry[];
@@ -1899,25 +1847,7 @@ export declare interface SourcePickerData {
 /** The source-picker bundle — one entry per ws, shared by the page-level and editor instances (goal 3). */
 export declare function sourcePickerKey(ws: string): readonly ["source-picker", string];
 
-export declare interface SourcePickerProps {
-    /** The assembled entries (from `useSourcePicker`). */
-    entries: SourceEntry[];
-    /** The currently-selected entry id (controlled) — "" for none. */
-    value?: string;
-    /** Called with the chosen entry's selection (or null when cleared to "— pick —"). */
-    onSelect: (selection: SourceSelection | null) => void;
-    /** True while the entries load — shows a loading placeholder. */
-    loading?: boolean;
-    /** Override which groups show + their order/labels (default: the read groups above). */
-    groups?: {
-        group: SourceEntry["group"];
-        label: string;
-    }[];
-    /** Accessible label for the select (default "source"). */
-    "aria-label"?: string;
-    /** Extra className on the root <label> (host layout). */
-    className?: string;
-}
+export { SourcePickerProps }
 
 /** The assembled picker data (sans loading flag — the caller owns that). */
 export declare interface SourcePickerResult {
@@ -1950,12 +1880,9 @@ export declare function specToCell(id: string, spec: EmbedPanelSpec, layout?: {
     h?: number;
 }): EmbedCell;
 
-/** The id of the "SQL query" entry — the visual SQL builder + raw-SQL source over `store.query`. */
-export declare const SQL_SOURCE_ID = "sql:query";
+export { SQL_SOURCE_ID }
 
-/** The single "SQL query" picker entry. Its `source.tool` is `store.query` so a host's tool set
- *  includes it (the bridge's leash); the concrete `sql` is filled by the host's SQL editor. */
-export declare function sqlSourceEntry(): SourceEntry;
+export { sqlSourceEntry }
 
 export declare type Status = "open" | "acked" | "resolved";
 
@@ -2118,6 +2045,8 @@ export declare type VarValue = string | string[];
 export declare interface VizBatchLoader {
     load(panel: unknown, cache?: CacheDirective): Promise<VizQueryResult>;
     readonly supported: boolean;
+    /** Whether the STREAMED transport is in play for this visit (§C) — a status hint / test assertion. */
+    readonly streaming: boolean;
 }
 
 export declare interface VizBatchLoaderOptions {
@@ -2128,6 +2057,8 @@ export declare interface VizBatchLoaderOptions {
     batchTool?: string;
     /** The verb id for the single/fallback call. */
     singleTool?: string;
+    /** The optional STREAMED transport (§C). Present ⇒ the loader tries it first for every wave. */
+    streamCall?: BatchStreamCall;
 }
 
 /** Mount a per-visit batch loader for the subtree. One loader per mount so its feature-detect +
@@ -2141,8 +2072,11 @@ export declare interface VizBatchLoaderOptions {
  *  provider" — a coupling the injected seam exists to avoid. It is not hypothetical: the shell's
  *  `useVizQuery` tests wrap a subtree in this provider and nothing else, and a hard `useKit()` here
  *  threw in all seven of them. */
-export declare function VizBatchProvider({ call, children }: {
+export declare function VizBatchProvider({ call, streamCall, children, }: {
     call?: BatchCall;
+    /** The optional STREAMED transport (§C): the same one batch, delivered per panel as each resolves.
+     *  A host without a streaming route omits it and nothing changes. */
+    streamCall?: BatchStreamCall;
     children: ReactNode;
 }): JSX_2.Element;
 
@@ -2212,12 +2146,7 @@ export declare type WeekStart = "monday" | "sunday";
  *  outside the closed `monday`/`sunday` set means Monday — the grammar the conformance fixture pins. */
 export declare function weekStartOf(v: string | undefined): WeekStart;
 
-/** Derive a widget id from a tile — the label slug, lowercased, non-alnum → `-`. The renderer parses
- *  the same slug from the `ext:<id>/<widget>` key, so picker and renderer agree (one slug function).
- *  Exported so a host renderer can reuse it instead of forking a second slugger. */
-export declare function widgetIdOf(w: {
-    label: string;
-}): string;
+export { widgetIdOf }
 
 declare type Window_2 = 
 /** `yesterday` (-1) / `today` (0) / `tomorrow` (+1): a calendar day. `today` runs midnight → now
