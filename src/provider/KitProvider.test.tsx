@@ -13,6 +13,7 @@ import {
   useKitOptional,
   useKitWs,
   useKitZone,
+  usePortalContainer,
 } from "./KitProvider";
 
 const client = makeKitClient(async () => ({}));
@@ -95,5 +96,45 @@ describe("browserZone", () => {
     };
     expect(browserZone()).toBe("UTC");
     Intl.DateTimeFormat = real;
+  });
+
+  // The portal container. Overlay content (dropdowns, popovers, sheets, tooltips) portals to
+  // `document.body` by default, which inside an extension is OUTSIDE `[data-ext-root]` — so none of
+  // the ext's scoped utilities match and the overlay renders unstyled. The host injects the scoped
+  // root here and the kit's primitives default their Radix `container` to it.
+  describe("portalContainer", () => {
+    function ShowsContainer() {
+      const c = usePortalContainer();
+      return <span data-testid="c">{c ? c.getAttribute("data-ext-root") ?? "el" : "null"}</span>;
+    }
+
+    it("hands the injected container to the kit's primitives", () => {
+      const root = document.createElement("div");
+      root.setAttribute("data-ext-root", "esr");
+      render(
+        <KitProvider client={client} ws="nube" portalContainer={root}>
+          <ShowsContainer />
+        </KitProvider>,
+      );
+      expect(screen.getByTestId("c").textContent).toBe("esr");
+    });
+
+    it("defaults to null so the shell keeps Radix's own container", () => {
+      // The host has no `[data-ext-root]` scoping, so `document.body` is correct there. `null` is
+      // exactly what Radix reads as "use the default", which is why absent must not mean "throw".
+      render(
+        <KitProvider client={client} ws="nube">
+          <ShowsContainer />
+        </KitProvider>,
+      );
+      expect(screen.getByTestId("c").textContent).toBe("null");
+    });
+
+    it("returns null OUTSIDE a provider rather than throwing", () => {
+      // Unlike `useKit`, this must degrade: a tooltip or dropdown has to render in a story or a bare
+      // test. Losing the scope there costs styling; throwing costs the page.
+      render(<ShowsContainer />);
+      expect(screen.getByTestId("c").textContent).toBe("null");
+    });
   });
 });

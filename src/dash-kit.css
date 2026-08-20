@@ -23,13 +23,31 @@
  * SCOPING IS OPT-IN AT THE ROOT. Because utilities live under `.dash-kit`, every kit component puts
  * that class on its own root — including any Radix PORTAL content, which renders at the document root
  * outside its trigger's subtree and would otherwise be entirely unstyled.
+ *
+ * THAT IS SUFFICIENT STANDALONE, BUT NOT INSIDE AN EXTENSION. `.dash-kit` matches anywhere in the
+ * document, so portalled content carrying the class is styled wherever it lands — in the shell. An
+ * extension's build, though, ALSO scopes every utility under `[data-ext-root]` (the SDK's
+ * `extTailwindPreset`), so a kit rule compiles there as `[data-ext-root] :is(.dash-kit .p-4)` and needs
+ * BOTH ancestors. Portalled content at `document.body` has only one, matches nothing, and renders as an
+ * unstyled full-width overlay — with no error anywhere.
+ *
+ * The class alone therefore cannot fix it: the content has to land inside the ext's root. Every kit
+ * primitive that portals defaults its Radix `container` to `usePortalContainer()`, which an extension
+ * feeds from `KitProvider portalContainer={…}`. Nothing changes for the shell, where the value is
+ * absent and Radix's own default is correct.
  */
 
 @layer theme, utilities;
 
 @import "tailwindcss/theme.css" layer(theme);
 
-/* Scoped utilities: generated classes are emitted UNDER `.dash-kit` only. */
+/* Scoped utilities: generated classes are emitted UNDER `.dash-kit` only.
+ *
+ * ⚠ This is the DESCENDANT form — `.dash-kit .p-4`. A utility on the SAME element as the scope class
+ * does NOT match, so `class="dash-kit w-[42rem]"` on one node silently compiles to nothing. Put the
+ * scope class on a WRAPPER and the utilities on the child. `DashboardRangePicker` learned this the
+ * hard way: its popover had a background (from an ancestor rule) but no width or padding, and read as
+ * a full-width sheet with no visible cause. */
 @layer utilities {
   .dash-kit {
     @tailwind utilities;

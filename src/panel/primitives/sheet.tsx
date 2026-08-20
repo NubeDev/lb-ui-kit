@@ -8,13 +8,18 @@ import * as React from "react";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
 
 import { cn } from "../lib/cn";
+import { usePortalContainer } from "../../provider/KitProvider";
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root {...props} />;
 }
 
-function SheetPortal({ ...props }: React.ComponentProps<typeof SheetPrimitive.Portal>) {
-  return <SheetPrimitive.Portal {...props} />;
+/** The portal, defaulted to the kit's container (an ext's scoped root inside an extension; Radix's
+ *  own default in the shell), so sheet content keeps the ext's CSS scope. An explicit `container`
+ *  still wins. See `usePortalContainer`. */
+function SheetPortal({ container, ...props }: React.ComponentProps<typeof SheetPrimitive.Portal>) {
+  const fallback = usePortalContainer();
+  return <SheetPrimitive.Portal container={container ?? fallback ?? undefined} {...props} />;
 }
 
 const SheetOverlay = React.forwardRef<

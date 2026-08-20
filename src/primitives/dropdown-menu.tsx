@@ -7,6 +7,7 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react";
 
 import { cn } from "../lib/cn";
+import { usePortalContainer } from "../provider/KitProvider";
 
 function DropdownMenu({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
   return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
@@ -16,17 +17,31 @@ function DropdownMenuTrigger({ ...props }: React.ComponentProps<typeof DropdownM
   return <DropdownMenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />;
 }
 
-function DropdownMenuPortal({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Portal>) {
-  return <DropdownMenuPrimitive.Portal {...props} />;
+/** The portal, defaulted to the kit's container (the ext's scoped root inside an extension; Radix's
+ *  own default in the shell). An explicit `container` prop still wins. See `usePortalContainer`. */
+function DropdownMenuPortal({
+  container,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Portal>) {
+  const fallback = usePortalContainer();
+  return <DropdownMenuPrimitive.Portal container={container ?? fallback ?? undefined} {...props} />;
 }
 
 function DropdownMenuContent({
   className,
   sideOffset = 4,
+  container,
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Content> & {
+  /** Override where the content portals to. Omit to use the kit's container (the ext's scoped root
+   *  inside an extension), which is what almost every caller wants. */
+  container?: React.ComponentProps<typeof DropdownMenuPrimitive.Portal>["container"];
+}) {
+  // Through `DropdownMenuPortal`, not `DropdownMenuPrimitive.Portal` — so the container default
+  // applies here too. Rendering the raw primitive was the bug: this is the path almost every caller
+  // takes, so it is the one that has to be right by default.
   return (
-    <DropdownMenuPrimitive.Portal>
+    <DropdownMenuPortal container={container}>
       <DropdownMenuPrimitive.Content
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
@@ -36,7 +51,7 @@ function DropdownMenuContent({
         )}
         {...props}
       />
-    </DropdownMenuPrimitive.Portal>
+    </DropdownMenuPortal>
   );
 }
 

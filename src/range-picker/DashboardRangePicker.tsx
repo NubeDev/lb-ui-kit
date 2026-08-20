@@ -158,176 +158,183 @@ export function DashboardRangePicker({
 
       {/* The grid needs real width on desktop (5 unit columns); on a phone it collapses to one
           column per band, so the popover keeps the viewport clamp it always had. */}
-      <DropdownMenuContent
-        align="end"
-        className={cn(
-          // `dash-kit` on the CONTENT too, not only the trigger: the content renders in a Radix PORTAL
-          // at the document root, outside the trigger's subtree, so a scope class on the trigger alone
-          // would leave every utility in the popover unstyled.
-          "dash-kit max-w-[calc(100vw-2rem)] p-0",
-          compact ? "w-[calc(100vw-2rem)]" : "w-[42rem]",
-        )}
-      >
-        <DropdownMenuLabel className="px-3 pt-2.5 text-[0.7rem] uppercase tracking-wide text-muted">
-          Quick ranges
-        </DropdownMenuLabel>
+      {/* `dash-kit` on the CONTENT, and the sizing utilities on the WRAPPER inside it.
+          
+          Both halves matter. The scope class must be here because the content renders in a Radix
+          PORTAL — outside the trigger's subtree — so a class on the trigger alone leaves the popover
+          unstyled. But the utilities must NOT sit on this same element: the kit compiles them as
+          `.dash-kit .p-0`, a DESCENDANT selector, so a utility beside the scope class matches nothing.
+          Written as one className (as this was) the popover kept its background — that rule comes from
+          an ancestor — while `w-[42rem]`, `max-w-…` and `p-0` all silently dropped, so it rendered as a
+          full-width sheet across the page with no visible cause. */}
+      <DropdownMenuContent align="end" className="dash-kit p-0">
+        <div
+          className={cn(
+            "max-w-[calc(100vw-2rem)]",
+            compact ? "w-[calc(100vw-2rem)]" : "w-[42rem]",
+          )}
+        >
+          <DropdownMenuLabel className="px-3 pt-2.5 text-[0.7rem] uppercase tracking-wide text-muted">
+            Quick ranges
+          </DropdownMenuLabel>
 
-        {/* BAND × COLUMN (rangePresets.ts): the band headings carry the trailing-vs-calendar
+          {/* BAND × COLUMN (rangePresets.ts): the band headings carry the trailing-vs-calendar
             distinction, so `Last 60 minutes` sitting one band above `Last hour` in the same column
             explains itself. On a phone the unit columns stack — the grid is a desktop affordance,
             and a 5-wide grid at 390px would clip every label. */}
-        <div className="px-1.5 pb-2">
-          {RANGE_BANDS.map((band) => (
-            <div key={band.id} className="mb-1 last:mb-0">
-              <div className="flex items-baseline gap-1.5 px-1 pb-0.5 pt-1">
-                <span className="text-[0.7rem] font-medium uppercase tracking-wide text-muted">
-                  {band.label}
-                </span>
-                <span className="text-[0.65rem] text-muted">{band.hint}</span>
-              </div>
-              <div
-                className={cn(
-                  "grid gap-x-1 gap-y-0.5",
-                  compact ? "grid-cols-2" : "grid-cols-5",
-                )}
-              >
-                {RANGE_COLUMNS.map((col) => {
-                  const cell = band.cells[col];
-                  // An empty cell still occupies its column on desktop, so the units stay aligned
-                  // across both bands; on a phone it would be a blank hole, so it is dropped.
-                  if (compact && cell.length === 0) return null;
-                  return (
-                    <div key={col} className="min-w-0">
-                      {!compact && (
-                        <div className="px-2 pb-0.5 text-[0.65rem] uppercase tracking-wide text-muted/70">
-                          {col}
-                        </div>
-                      )}
-                      {cell.map((preset) => {
-                        // Active = the URL literally carries this expression — no reverse-resolution.
-                        const selected = !to && preset.expr === from;
-                        return (
-                          <Button
-                            key={preset.id}
-                            variant="ghost"
-                            size="sm"
-                            className={cn(
-                              "w-full justify-start gap-1.5 px-2 text-xs font-normal",
-                              compact ? "h-10" : "h-8",
-                              selected && "bg-muted-bg font-medium text-fg",
-                            )}
-                            onClick={() => commit({ from: preset.expr })}
-                          >
-                            <Check
-                              size={12}
+          <div className="px-1.5 pb-2">
+            {RANGE_BANDS.map((band) => (
+              <div key={band.id} className="mb-1 last:mb-0">
+                <div className="flex items-baseline gap-1.5 px-1 pb-0.5 pt-1">
+                  <span className="text-[0.7rem] font-medium uppercase tracking-wide text-muted">
+                    {band.label}
+                  </span>
+                  <span className="text-[0.65rem] text-muted">{band.hint}</span>
+                </div>
+                <div
+                  className={cn(
+                    "grid gap-x-1 gap-y-0.5",
+                    compact ? "grid-cols-2" : "grid-cols-5",
+                  )}
+                >
+                  {RANGE_COLUMNS.map((col) => {
+                    const cell = band.cells[col];
+                    // An empty cell still occupies its column on desktop, so the units stay aligned
+                    // across both bands; on a phone it would be a blank hole, so it is dropped.
+                    if (compact && cell.length === 0) return null;
+                    return (
+                      <div key={col} className="min-w-0">
+                        {!compact && (
+                          <div className="px-2 pb-0.5 text-[0.65rem] uppercase tracking-wide text-muted/70">
+                            {col}
+                          </div>
+                        )}
+                        {cell.map((preset) => {
+                          // Active = the URL literally carries this expression — no reverse-resolution.
+                          const selected = !to && preset.expr === from;
+                          return (
+                            <Button
+                              key={preset.id}
+                              variant="ghost"
+                              size="sm"
                               className={cn(
-                                "shrink-0 text-accent",
-                                !selected && "invisible",
+                                "w-full justify-start gap-1.5 px-2 text-xs font-normal",
+                                compact ? "h-10" : "h-8",
+                                selected && "bg-muted-bg font-medium text-fg",
                               )}
-                            />
-                            <span className="truncate">{preset.label}</span>
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
+                              onClick={() => commit({ from: preset.expr })}
+                            >
+                              <Check
+                                size={12}
+                                className={cn(
+                                  "shrink-0 text-accent",
+                                  !selected && "invisible",
+                                )}
+                              />
+                              <span className="truncate">{preset.label}</span>
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-
-        <DropdownMenuSeparator className="my-0" />
-
-        {/* The RELATIVE expression — anything the grammar speaks that the preset list doesn't. */}
-        <div className="space-y-1.5 px-3 py-2.5">
-          <div className="text-[0.7rem] uppercase tracking-wide text-muted">
-            Relative range
-          </div>
-          <form
-            className="flex items-center gap-1.5"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (rel.trim() && relPreview && !("error" in relPreview))
-                commit({ from: rel.trim() });
-            }}
-          >
-            <Input
-              aria-label="dashboard relative range"
-              className="h-8 flex-1 text-xs"
-              placeholder="last-3-months, this-quarter, now-4h…"
-              value={rel}
-              onChange={(e) => setRel(e.target.value)}
-            />
-            <Button
-              type="submit"
-              size="sm"
-              className="h-8 text-xs"
-              disabled={!rel.trim() || !relPreview || "error" in relPreview}
-              title="Apply this relative range — re-queries every panel"
-            >
-              Apply
-            </Button>
-          </form>
-          {relPreview &&
-            ("error" in relPreview ? (
-              <p className="text-[0.7rem] text-danger">{relPreview.error}</p>
-            ) : (
-              <p
-                className="truncate text-[0.7rem] text-muted"
-                title={relPreview.text}
-              >
-                {relPreview.text}
-              </p>
             ))}
-        </div>
-
-        <DropdownMenuSeparator className="my-0" />
-
-        {/* The absolute window. Edited as a draft and committed by Apply — see the header note. */}
-        <div className="space-y-2 px-3 py-2.5">
-          <div className="text-[0.7rem] uppercase tracking-wide text-muted">
-            Absolute range
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted">
-            <PrefDateInput
-              aria-label="dashboard range from"
-              dateStyle={dateStyle}
-              className="flex-1"
-              value={draft.from}
-              onChange={(next) => setDraft((d) => ({ ...d, from: next }))}
-            />
-            <span>to</span>
-            <PrefDateInput
-              aria-label="dashboard range to"
-              dateStyle={dateStyle}
-              className="flex-1"
-              value={draft.to ?? ""}
-              onChange={(next) => setDraft((d) => ({ ...d, to: next }))}
-            />
+
+          <DropdownMenuSeparator className="my-0" />
+
+          {/* The RELATIVE expression — anything the grammar speaks that the preset list doesn't. */}
+          <div className="space-y-1.5 px-3 py-2.5">
+            <div className="text-[0.7rem] uppercase tracking-wide text-muted">
+              Relative range
+            </div>
+            <form
+              className="flex items-center gap-1.5"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (rel.trim() && relPreview && !("error" in relPreview))
+                  commit({ from: rel.trim() });
+              }}
+            >
+              <Input
+                aria-label="dashboard relative range"
+                className="h-8 flex-1 text-xs"
+                placeholder="last-3-months, this-quarter, now-4h…"
+                value={rel}
+                onChange={(e) => setRel(e.target.value)}
+              />
+              <Button
+                type="submit"
+                size="sm"
+                className="h-8 text-xs"
+                disabled={!rel.trim() || !relPreview || "error" in relPreview}
+                title="Apply this relative range — re-queries every panel"
+              >
+                Apply
+              </Button>
+            </form>
+            {relPreview &&
+              ("error" in relPreview ? (
+                <p className="text-[0.7rem] text-danger">{relPreview.error}</p>
+              ) : (
+                <p
+                  className="truncate text-[0.7rem] text-muted"
+                  title={relPreview.text}
+                >
+                  {relPreview.text}
+                </p>
+              ))}
           </div>
-          {absInvalid ? (
-            <p className="text-[0.7rem] text-danger">
-              The start date must not be after the end date.
-            </p>
-          ) : (
-            <p className="text-[0.7rem] text-muted">
-              The end date is exclusive — it ends at the start of that day.
-            </p>
-          )}
-          <Button
-            size="sm"
-            className="h-8 w-full text-xs"
-            disabled={!absDirty || absInvalid || !draft.from || !draft.to}
-            title={
-              absDirty
-                ? "Apply this range — re-queries every panel"
-                : "This range is already applied"
-            }
-            onClick={() => commit({ from: draft.from, to: draft.to })}
-          >
-            Apply range
-          </Button>
+
+          <DropdownMenuSeparator className="my-0" />
+
+          {/* The absolute window. Edited as a draft and committed by Apply — see the header note. */}
+          <div className="space-y-2 px-3 py-2.5">
+            <div className="text-[0.7rem] uppercase tracking-wide text-muted">
+              Absolute range
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted">
+              <PrefDateInput
+                aria-label="dashboard range from"
+                dateStyle={dateStyle}
+                className="flex-1"
+                value={draft.from}
+                onChange={(next) => setDraft((d) => ({ ...d, from: next }))}
+              />
+              <span>to</span>
+              <PrefDateInput
+                aria-label="dashboard range to"
+                dateStyle={dateStyle}
+                className="flex-1"
+                value={draft.to ?? ""}
+                onChange={(next) => setDraft((d) => ({ ...d, to: next }))}
+              />
+            </div>
+            {absInvalid ? (
+              <p className="text-[0.7rem] text-danger">
+                The start date must not be after the end date.
+              </p>
+            ) : (
+              <p className="text-[0.7rem] text-muted">
+                The end date is exclusive — it ends at the start of that day.
+              </p>
+            )}
+            <Button
+              size="sm"
+              className="h-8 w-full text-xs"
+              disabled={!absDirty || absInvalid || !draft.from || !draft.to}
+              title={
+                absDirty
+                  ? "Apply this range — re-queries every panel"
+                  : "This range is already applied"
+              }
+              onClick={() => commit({ from: draft.from, to: draft.to })}
+            >
+              Apply range
+            </Button>
+          </div>
         </div>
       </DropdownMenuContent>
     </DropdownMenu>
