@@ -17,6 +17,12 @@
 //     ≪ one round-trip per tile.
 //   - **Source-blind (rule 10).** The loader never inspects a panel's source/tool; it forwards opaque
 //     panels + a uniform `cache` directive and lets the host honor what each target cares about.
+//   - **Streamed when the host offers it (§C, progressive paint).** A host may inject `streamCall`: the
+//     SAME one batch, but delivered per panel as each resolves, so a cell paints when ITS query lands
+//     instead of when the slowest sibling does. The loader stays transport-blind — it never names a URL
+//     or a route; the host owns how the stream is fetched, exactly as it owns `call`. Absent or failing,
+//     the loader falls back to the single-answer batch verb and then to per-cell `viz.query`, so the
+//     three transports are one behaviour with three latencies.
 
 /** The lb per-batch panel cap (`viz/batch.rs::MAX_PANELS`). Over-cap the server answers `BadInput`, so
  *  we chunk to it rather than send an over-cap batch. */
@@ -39,7 +45,21 @@ export interface VizQueryResult {
 }
 
 /** One per-panel result of `viz.query_batch` — either the query result, or a per-item failure. */
-type BatchItem = (VizQueryResult & { status?: undefined }) | { status: "error" | "denied"; message?: string };
+export type BatchItem =
+  | (VizQueryResult & { status?: undefined })
+  | { status: "error" | "denied"; message?: string };
+
+/** The STREAMED transport seam (§C). Given the same `{panels, now, cache?}` args the batch verb takes,
+ *  the host calls `onItem(index, item)` for each panel as it arrives and resolves when the stream ends.
+ *  Rejecting means "this transport is unavailable" — the loader then falls back for that wave (and, when
+ *  the failure reads as an absent route, for the rest of the visit).
+ *
+ *  Transport-blind on purpose: the kit never learns the gateway's URL, the auth header, or the wire
+ *  format. A host that has no streaming route simply doesn't inject this. */
+export type BatchStreamCall = (
+  args: Record<string, unknown>,
+  onItem: (index: number, item: BatchItem) => void,
+) => Promise<void>;
 
 interface Pending {
   panel: unknown;
@@ -53,6 +73,8 @@ interface Pending {
 export interface VizBatchLoader {
   load(panel: unknown, cache?: CacheDirective): Promise<VizQueryResult>;
   readonly supported: boolean;
+  /** Whether the STREAMED transport is in play for this visit (§C) — a status hint / test assertion. */
+  readonly streaming: boolean;
 }
 
 export interface VizBatchLoaderOptions {
@@ -63,6 +85,8 @@ export interface VizBatchLoaderOptions {
   batchTool?: string;
   /** The verb id for the single/fallback call. */
   singleTool?: string;
+  /** The optional STREAMED transport (§C). Present ⇒ the loader tries it first for every wave. */
+  streamCall?: BatchStreamCall;
 }
 
 const VIZ_QUERY_BATCH = "viz.query_batch";
@@ -75,9 +99,14 @@ export function makeVizBatchLoader(call: BatchCall, opts: VizBatchLoaderOptions 
   const batchTool = opts.batchTool ?? VIZ_QUERY_BATCH;
   const singleTool = opts.singleTool ?? VIZ_QUERY;
 
+  const streamCall = opts.streamCall;
+
   let pending: Pending[] = [];
   let timer: ReturnType<typeof setTimeout> | null = null;
   let supported = true;
+  // The streamed transport is tried first when injected. A failure that reads as "route absent" retires
+  // it for the visit; a transient one only costs this wave (same policy as the batch verb's detect).
+  let streamSupported = Boolean(streamCall);
 
   const schedule = () => {
     if (timer !== null) return;
@@ -95,13 +124,43 @@ export function makeVizBatchLoader(call: BatchCall, opts: VizBatchLoaderOptions 
   };
 
   const runChunk = async (chunk: Pending[]) => {
-    if (!supported) {
+    if (!supported && !streamSupported) {
       await perItem(chunk);
       return;
     }
     const cache = maxCache(chunk);
     const args: Record<string, unknown> = { panels: chunk.map((p) => p.panel), now: 0 };
     if (cache) args.cache = cache;
+
+    // §C: stream first when the host offers it — each cell settles on ITS line, not on the wave.
+    if (streamSupported && streamCall) {
+      const settled = new Set<number>();
+      try {
+        await streamCall(args, (index, item) => {
+          const p = chunk[index];
+          if (!p || settled.has(index)) return;
+          settled.add(index);
+          settle(p, item);
+        });
+        // A stream that ended without every panel is a truncated response, not a per-panel denial: the
+        // unsettled cells get an honest transport error rather than a silent empty state.
+        chunk.forEach((p, idx) => {
+          if (!settled.has(idx)) p.reject(new Error("viz.query_batch stream ended before this panel"));
+        });
+        return;
+      } catch (err) {
+        if (looksUnsupported(err)) streamSupported = false;
+        // Anything already settled keeps its result; the rest fall through to the batch verb below.
+        chunk = chunk.filter((_, idx) => !settled.has(idx));
+        if (chunk.length === 0) return;
+        args.panels = chunk.map((p) => p.panel);
+      }
+    }
+
+    if (!supported) {
+      await perItem(chunk);
+      return;
+    }
     try {
       const out = (await call(batchTool, args)) as { results?: BatchItem[] } | undefined;
       const results = out?.results ?? [];
@@ -155,6 +214,9 @@ export function makeVizBatchLoader(call: BatchCall, opts: VizBatchLoaderOptions 
     },
     get supported() {
       return supported;
+    },
+    get streaming() {
+      return streamSupported;
     },
   };
 }

@@ -62,6 +62,23 @@ export declare function bareId(id: string): string;
  *  provider can bind a bridge leashed to `viz.query`/`viz.query_batch`. */
 export declare type BatchCall = (tool: string, args: Record<string, unknown>) => Promise<unknown>;
 
+/** One per-panel result of `viz.query_batch` — either the query result, or a per-item failure. */
+declare type BatchItem = (VizQueryResult & {
+    status?: undefined;
+}) | {
+    status: "error" | "denied";
+    message?: string;
+};
+
+/** The STREAMED transport seam (§C). Given the same `{panels, now, cache?}` args the batch verb takes,
+ *  the host calls `onItem(index, item)` for each panel as it arrives and resolves when the stream ends.
+ *  Rejecting means "this transport is unavailable" — the loader then falls back for that wave (and, when
+ *  the failure reads as an absent route, for the rest of the visit).
+ *
+ *  Transport-blind on purpose: the kit never learns the gateway's URL, the auth header, or the wire
+ *  format. A host that has no streaming route simply doesn't inject this. */
+declare type BatchStreamCall = (args: Record<string, unknown>, onItem: (index: number, item: BatchItem) => void) => Promise<void>;
+
 /** The sentinel a stored preference uses for "no stated preference" — treated as absent, not as a
  *  zone name. Empty string means the same thing. */
 export declare const BROWSER_TZ = "browser";
@@ -2146,6 +2163,8 @@ export declare type VarValue = string | string[];
 export declare interface VizBatchLoader {
     load(panel: unknown, cache?: CacheDirective): Promise<VizQueryResult>;
     readonly supported: boolean;
+    /** Whether the STREAMED transport is in play for this visit (§C) — a status hint / test assertion. */
+    readonly streaming: boolean;
 }
 
 export declare interface VizBatchLoaderOptions {
@@ -2156,6 +2175,8 @@ export declare interface VizBatchLoaderOptions {
     batchTool?: string;
     /** The verb id for the single/fallback call. */
     singleTool?: string;
+    /** The optional STREAMED transport (§C). Present ⇒ the loader tries it first for every wave. */
+    streamCall?: BatchStreamCall;
 }
 
 /** Mount a per-visit batch loader for the subtree. One loader per mount so its feature-detect +
@@ -2169,8 +2190,11 @@ export declare interface VizBatchLoaderOptions {
  *  provider" — a coupling the injected seam exists to avoid. It is not hypothetical: the shell's
  *  `useVizQuery` tests wrap a subtree in this provider and nothing else, and a hard `useKit()` here
  *  threw in all seven of them. */
-export declare function VizBatchProvider({ call, children }: {
+export declare function VizBatchProvider({ call, streamCall, children, }: {
     call?: BatchCall;
+    /** The optional STREAMED transport (§C): the same one batch, delivered per panel as each resolves.
+     *  A host without a streaming route omits it and nothing changes. */
+    streamCall?: BatchStreamCall;
     children: ReactNode;
 }): JSX_2.Element;
 
