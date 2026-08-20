@@ -883,6 +883,8 @@ export declare interface KitContextValue {
     ws: string;
     theme?: KitTheme;
     zone: ZoneResolver;
+    /** Where overlay content portals to. `null`/absent ⇒ Radix's default (`document.body`). */
+    portalContainer: HTMLElement | null;
 }
 
 /** A rejection the kit raises for a verb it deliberately will not carry (today: the insights writes).
@@ -906,7 +908,7 @@ export declare class KitDeniedError extends Error {
  * }
  * ```
  */
-export declare function KitProvider({ client, ws, theme, zone, children }: KitProviderProps): JSX_2.Element;
+export declare function KitProvider({ client, ws, theme, zone, portalContainer, children, }: KitProviderProps): JSX_2.Element;
 
 export declare interface KitProviderProps {
     /** The whole integration — build it with `makeKitClient(bridge)` (extension) or
@@ -918,6 +920,23 @@ export declare interface KitProviderProps {
     theme?: KitTheme;
     /** Resolve the viewer's zone. Defaults to {@link browserZone}. */
     zone?: ZoneResolver;
+    /**
+     * Where the kit's overlay content (dropdowns, popovers, selects, dialogs, tooltips) portals to.
+     *
+     * **Extensions must pass this.** Radix portals overlay content to `document.body` so it escapes an
+     * ancestor's `overflow` clipping. Standalone that is fine — the kit tags its portal content with its
+     * own `.dash-kit` scope class, which matches anywhere in the document. But an extension's build ALSO
+     * scopes every utility under `[data-ext-root]` (the SDK's `extTailwindPreset`), and `document.body`
+     * is outside that root — so inside an ext, portalled content matches NONE of the compiled CSS and
+     * renders as an unstyled, transparent, full-width overlay. Nothing errors; it just looks broken.
+     *
+     * In an extension: `portalContainer={usePortalContainer()}` (from `@nube/ext-ui-sdk`, which returns
+     * the ext's scoped root). In the shell, omit it — the host has no such scoping and the default is
+     * correct.
+     *
+     * Absent ⇒ `null` ⇒ Radix's default container, so every existing caller is unaffected.
+     */
+    portalContainer?: HTMLElement | null;
     children: ReactNode;
 }
 
@@ -2079,6 +2098,15 @@ export declare function useKitWs(): string;
 
 /** The zone resolver — the injected replacement for the shell's `preferredZone()`. */
 export declare function useKitZone(): ZoneResolver;
+
+/** Where overlay content should portal to — the value every kit primitive passes to its Radix
+ *  `Portal container`. `null` (no provider, or a host that did not inject one) is exactly what Radix
+ *  reads as "use the default container", so a kit primitive works standalone and inside an ext alike.
+ *
+ *  Deliberately built on `useKitOptional`, NOT `useKit`: a primitive like a tooltip or dropdown must
+ *  render outside a `KitProvider` (a story, a bare test) rather than throw. Losing the scope there
+ *  costs styling; throwing costs the page. */
+export declare function usePortalContainer(): HTMLElement | null;
 
 /** Controls a right-docked panel's width via a left-edge drag handle. */
 export declare function useResizable({ initial, min, max, step }: UseResizableOptions): Resizable;

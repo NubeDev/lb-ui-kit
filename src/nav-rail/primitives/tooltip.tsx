@@ -4,6 +4,7 @@ import * as React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 
 import { cn } from "../lib/cn";
+import { usePortalContainer } from "../../provider/KitProvider";
 
 function TooltipProvider({
   delayDuration = 0,
@@ -25,8 +26,11 @@ function TooltipContent({
   sideOffset = 6,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Content>) {
+  // Portalled into the kit's container so the content stays inside an ext's `[data-ext-root]` CSS
+  // scope; `null` outside a KitProvider is Radix's own default. See `usePortalContainer`.
+  const container = usePortalContainer();
   return (
-    <TooltipPrimitive.Portal>
+    <TooltipPrimitive.Portal container={container ?? undefined}>
       <TooltipPrimitive.Content
         sideOffset={sideOffset}
         className={cn(

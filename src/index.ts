@@ -27,6 +27,7 @@ export {
   useKitTheme,
   useKitWs,
   useKitZone,
+  usePortalContainer,
 } from "./provider/KitProvider";
 export type {
   KitContextValue,
