@@ -4200,7 +4200,7 @@ function Bt(e, t = {}) {
       await N(f);
       return;
     }
-    const y = ts(f), k = { panels: f.map((g) => g.panel), now: 0 };
+    const y = ts(f), k = { panels: f.map((g) => g.panel), now: Date.now() };
     if (y && (k.cache = y), d && s) {
       const g = /* @__PURE__ */ new Set();
       try {
