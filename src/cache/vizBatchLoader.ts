@@ -129,7 +129,12 @@ export function makeVizBatchLoader(call: BatchCall, opts: VizBatchLoaderOptions 
       return;
     }
     const cache = maxCache(chunk);
-    const args: Record<string, unknown> = { panels: chunk.map((p) => p.panel), now: 0 };
+    // `now` is the wave's logical clock (epoch ms). It is what the host quantises into the gateway
+    // cache key, so it MUST move: a constant here (it shipped as `0`) made every wave of a windowless
+    // panel (a live point read) hit the same key, and the cache served the entry for its full TTL
+    // (60 s) no matter how often the board refreshed. It is also the anchor for a panel's
+    // `timeFrom`/`timeShift` override and the `ts` an ingest target records.
+    const args: Record<string, unknown> = { panels: chunk.map((p) => p.panel), now: Date.now() };
     if (cache) args.cache = cache;
 
     // §C: stream first when the host offers it — each cell settles on ITS line, not on the wave.
