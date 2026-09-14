@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { Insight, InsightsClient, ListQuery, PageCursor } from "./types";
+import type { Insight, InsightsClient, ListQuery, PageCursor, StatusCounts } from "./types";
 
 export interface InsightsState {
   items: Insight[];
@@ -18,6 +18,9 @@ export interface InsightsState {
   actingOn: string | null;
   /** The keyset cursor for the next page, or null when the current list is the last page. */
   nextCursor: PageCursor | null;
+  /** The node's tally for the current filter, when the query asked for `counts`. The pager reads
+   *  `counts.total` so "page N of M" states the real number of matching rows, not the page size. */
+  counts: StatusCounts | null;
   refresh: () => Promise<void>;
   loadMore: () => Promise<void>;
   setFilter: (filter: ListQuery) => void;
@@ -34,6 +37,7 @@ export function useInsights(client: InsightsClient, initial: ListQuery): Insight
   const [loading, setLoading] = useState(false);
   const [actingOn, setActingOn] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<PageCursor | null>(null);
+  const [counts, setCounts] = useState<StatusCounts | null>(null);
   const [filter, setFilterState] = useState<ListQuery>(initial);
 
   const clientRef = useRef(client);
@@ -44,6 +48,7 @@ export function useInsights(client: InsightsClient, initial: ListQuery): Insight
     try {
       // The head page (no cursor) — replaces the list (the common refresh path).
       const page = await clientRef.current.list({ ...filter, cursor: undefined });
+      setCounts(page.counts ?? null);
       setItems(page.items);
       setNextCursor(page.next ?? null);
       setError(null);
@@ -112,6 +117,7 @@ export function useInsights(client: InsightsClient, initial: ListQuery): Insight
 
   return {
     items,
+    counts,
     error,
     loading,
     actingOn,
