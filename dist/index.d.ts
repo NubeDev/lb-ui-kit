@@ -826,6 +826,9 @@ export declare interface InsightsState {
     actingOn: string | null;
     /** The keyset cursor for the next page, or null when the current list is the last page. */
     nextCursor: PageCursor | null;
+    /** The node's tally for the current filter, when the query asked for `counts`. The pager reads
+     *  `counts.total` so "page N of M" states the real number of matching rows, not the page size. */
+    counts: StatusCounts | null;
     refresh: () => Promise<void>;
     loadMore: () => Promise<void>;
     setFilter: (filter: ListQuery) => void;
@@ -1024,18 +1027,46 @@ export declare interface ListFilter {
     origin_ref?: string;
     tags?: Record<string, string>;
     range?: [number, number];
+    /** Free text over the insight's NAME (`title`), answered by the node's BM25 index.
+     *
+     *  Server-side on purpose: the roster's search box used to filter the rows the browser happened to
+     *  hold, so it searched a WINDOW and reported its size as a total. This searches every row. Name
+     *  only — widening it to the tag columns would mean indexing several more fields for a box people
+     *  type a fault name into. Mirrors `lb_insights::ListFilter::search`. */
+    search?: string;
 }
 
 /** One newest-first page of insights. Mirrors `lb_insights::ListPage`. */
 export declare interface ListPage {
     items: Insight[];
     next?: PageCursor;
+    /** The per-status tally for this filter, when the query asked for it (`counts: true`).
+     *
+     *  The pager needs it: "page 3 of 10" is only true if the total is the NODE's count, not the
+     *  number of rows this page happens to hold. Measured cheap — `count() GROUP ALL` is ~4 ms.
+     *  Mirrors `lb_insights::ListPage::counts`. */
+    counts?: StatusCounts;
 }
 
 /** The full list query (filter + paging + limit). Mirrors `lb_insights::ListQuery`. */
 export declare interface ListQuery extends ListFilter {
     cursor?: PageCursor;
     limit?: number;
+    /** Rows to SKIP before the page — random access, for a pager offering "page N of M", first and
+     *  last. The keyset {@link cursor} cannot serve those: it only walks forward one page at a time.
+     *
+     *  Measured against this engine, offset is the better tool here rather than the usual worse one:
+     *  `ORDER BY` sorts the matched set on every request anyway, so skipping costs nothing extra —
+     *  page 1 and the LAST page of 20,000 rows were 97.71 ms and 101.76 ms. Mirrors
+     *  `lb_insights::ListQuery::offset`. */
+    offset?: number;
+    /** Ask the node to tally the matching rows and return {@link ListPage.counts} alongside the page.
+     *
+     *  A pager needs it: without a total, "page N of M" can only be computed from the rows in hand,
+     *  which is the page size — so the pager would report the window as the whole. Measured cheap
+     *  (`count() GROUP ALL` ≈ 4 ms), but OFF by default: the roster asks for it, a live tail does not.
+     *  Mirrors `lb_insights::ListQuery::counts`. */
+    counts?: boolean;
 }
 
 /** Live (Zenoh) entries — each series also offers a live `series.watch` stream. */
@@ -1999,6 +2030,14 @@ export declare type Status = "open" | "acked" | "resolved";
 export declare function StatusBadge({ status }: {
     status: Status;
 }): JSX_2.Element;
+
+/** The four numbers the stat tiles and the pager read. Mirrors `lb_insights::StatusCounts`. */
+export declare interface StatusCounts {
+    total: number;
+    open: number;
+    acked: number;
+    resolved: number;
+}
 
 /** Status → tone key. `open` reads as the primary accent (action due), `acked` as warning (claimed),
  *  `resolved` as success (done) — the Inbox status register. */

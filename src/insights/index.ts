@@ -67,6 +67,7 @@ export type {
   ListFilter,
   ListQuery,
   ListPage,
+  StatusCounts,
   OccCursor,
   OccurrencePage,
   InsightsClient,
